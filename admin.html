@@ -117,7 +117,7 @@
   .urow input, .urow select, #urows select { padding: 7px 10px; border: 1.5px solid var(--latte); border-radius: 10px; background: #fff; width: 100%; }
   .pw { font-family: ui-monospace, Consolas, monospace; letter-spacing: .06em; user-select: all; }
   /* 只能看的人：把會修改資料的按鈕都收起來 */
-  .readonly #add, .readonly [data-edit], .readonly [data-del], .readonly [data-unseat], .readonly #t-add, .readonly #t-save, .readonly [data-rm] { display: none !important; }
+  .readonly #add, .readonly #bulk, .readonly [data-edit], .readonly [data-del], .readonly [data-unseat], .readonly #t-add, .readonly #t-save, .readonly [data-rm] { display: none !important; }
   .readonly .person { cursor: default; }
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 30; }
   .toast.show { opacity: 1; }
@@ -130,6 +130,7 @@
     <h1>婚宴後台 <span>♥</span></h1>
     <p class="hint">請輸入你自己的後台密碼</p>
     <input type="password" id="key" autocomplete="current-password" required>
+    <label class="ck" style="justify-content:center;margin-bottom:8px"><input type="checkbox" id="remember" checked> 在這台裝置保持登入（下次不用再輸入）</label>
     <p class="err" id="login-err"></p>
     <button class="btn" type="submit" id="login-btn">登入</button>
   </form>
@@ -139,6 +140,7 @@
       <h1>蕭苰栯 <span>♥</span> 洪韻雯・賓客後台<span class="who" id="who"></span></h1>
       <div>
         <button class="btn small" id="add">＋ 新增賓客</button>
+        <button class="btn small" id="bulk">＋ 批次新增</button>
         <button class="btn ghost small" id="csv">匯出名單</button>
         <button class="btn ghost small" id="csv-seat">匯出座位表</button>
         <button class="btn ghost small" id="refresh">重新整理</button>
@@ -263,6 +265,30 @@
     </div>
   </form>
 </div>
+<!-- 批次新增：一次貼上很多位（給不會用電子喜帖的長輩） -->
+<div class="modal" id="bulk-modal" hidden>
+  <div class="sheet">
+    <h2>批次新增賓客</h2>
+    <p class="hint" style="margin:0">一行一位，只寫名字就可以。後面可以再加手機和人數，用空格或逗號隔開，順序不拘。<br>
+      例：<code>王阿姨</code>　<code>李伯伯 3</code>（共 3 人）　<code>陳叔叔 0912345678 2</code></p>
+    <label class="f">名單<textarea id="bulk-text" rows="8" placeholder="王阿姨&#10;李伯伯 3&#10;陳叔叔 0912345678 2"></textarea></label>
+    <div class="two">
+      <label class="f">男方／女方
+        <select id="bulk-side"><option value="">未標記</option><option>男方親友</option><option>女方親友</option><option>共同朋友</option></select>
+      </label>
+      <label class="f">關係（可自己打字）<input id="bulk-rel" maxlength="20" list="rel-list" placeholder="例：親戚、長輩"></label>
+    </div>
+    <label class="f">出席狀態
+      <select id="bulk-attend"><option value="yes">出席</option><option value="no">不克出席</option></select>
+    </label>
+    <p class="hint" id="bulk-preview" style="margin:0"></p>
+    <p class="err" id="bulk-err" style="white-space:pre-line"></p>
+    <div class="sheet-acts">
+      <button class="btn ghost" type="button" id="bulk-cancel">關閉</button>
+      <button class="btn" type="button" id="bulk-save">新增</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script src="config.js?v=10112025"></script>
@@ -275,7 +301,8 @@
   const API = isLocal ? '/api' : (CFG.API_URL || '');
   const $ = s => document.querySelector(s);
   let KEY = '';
-  try { KEY = sessionStorage.getItem('wedding-admin-key') || ''; } catch (e) {}
+  // 勾選「保持登入」時密碼存在這台裝置的瀏覽器裡（localStorage），關掉再開也不用重新輸入；沒勾就只在這次開啟期間有效
+  try { KEY = localStorage.getItem('wedding-admin-key') || sessionStorage.getItem('wedding-admin-key') || ''; } catch (e) {}
   let guests = [], tables = [], me = { name: '', role: '', level: 'view' }, role = '', users = [], sortKey = 'updatedAt', sortDir = -1, selected = null, editingId = null;
   const canEdit = () => me.level !== 'view';
 
@@ -312,7 +339,10 @@
     $('#login-err').textContent = '';
     try {
       await load();
-      try { sessionStorage.setItem('wedding-admin-key', KEY); } catch (e) {}
+      try {
+        localStorage.removeItem('wedding-admin-key'); sessionStorage.removeItem('wedding-admin-key');
+        ($('#remember').checked ? localStorage : sessionStorage).setItem('wedding-admin-key', KEY);
+      } catch (e) {}
     } catch (err) {
       $('#login-err').textContent = err.message;
     } finally {
@@ -320,7 +350,7 @@
     }
   });
   $('#logout').addEventListener('click', () => {
-    try { sessionStorage.removeItem('wedding-admin-key'); } catch (e) {}
+    try { sessionStorage.removeItem('wedding-admin-key'); localStorage.removeItem('wedding-admin-key'); } catch (e) {}
     location.reload();
   });
   $('#refresh').addEventListener('click', () => load().then(() => toast('已更新')).catch(err => toast(err.message)));
@@ -701,6 +731,70 @@
     catch (err) { toast(err.message); }
   });
 
+  // ---------- 批次新增 ----------
+  /** 把一行文字拆成 姓名／手機／人數：手機是 09 開頭的號碼，1–10 的數字是總人數（含本人），其餘當成名字 */
+  function parseBulk(text) {
+    return text.split(/\n/).map(l => l.trim()).filter(Boolean).map(line => {
+      const parts = line.split(/[\s,，、\t]+/).filter(Boolean);
+      let phone = '', n = 1; const name = [];
+      parts.forEach(t => {
+        const digits = t.replace(/\D/g, '');
+        const cnt = t.match(/^(\d{1,2})[人位]?$/);
+        if (/^[\d\-+()]+$/.test(t) && digits.length >= 9) phone = t;
+        else if (cnt && +cnt[1] >= 1 && +cnt[1] <= 10) n = +cnt[1];
+        else name.push(t);
+      });
+      const nm = name.join('');
+      const m = nm.match(/^(.*?)(\d{1,2})$/);          // 「李伯伯3」這種沒空格的寫法
+      return m && m[1] ? { name: m[1], phone, n: Math.min(10, +m[2] || 1), line } : { name: nm, phone, n, line };
+    });
+  }
+  function bulkPreview() {
+    const rows = parseBulk($('#bulk-text').value);
+    const people = rows.reduce((a, r) => a + r.n, 0);
+    $('#bulk-preview').textContent = rows.length ? `將新增 ${rows.length} 筆` + ($('#bulk-attend').value === 'yes' ? `，共 ${people} 人` : '') : '';
+  }
+  $('#bulk').addEventListener('click', () => {
+    $('#bulk-text').value = ''; $('#bulk-err').textContent = ''; $('#bulk-rel').value = '';
+    $('#bulk-side').value = role === '新郎' ? '男方親友' : role === '新娘' ? '女方親友' : '';
+    $('#bulk-attend').value = 'yes';
+    bulkPreview();
+    $('#bulk-modal').hidden = false;
+    $('#bulk-text').focus();
+  });
+  $('#bulk-cancel').addEventListener('click', () => { $('#bulk-modal').hidden = true; });
+  $('#bulk-text').addEventListener('input', bulkPreview);
+  $('#bulk-attend').addEventListener('change', bulkPreview);
+  $('#bulk-save').addEventListener('click', async () => {
+    const rows = parseBulk($('#bulk-text').value);
+    if (!rows.length) return ($('#bulk-err').textContent = '請先貼上名單，一行一位');
+    const attend = $('#bulk-attend').value, side = $('#bulk-side').value, relation = $('#bulk-rel').value.trim();
+    const btn = $('#bulk-save');
+    btn.disabled = true; $('#bulk-err').textContent = '';
+    const failed = []; let done = 0;
+    for (const r of rows) {                       // 一筆一筆送，哪一筆有問題就留下來讓你修改
+      btn.textContent = `新增中 ${done + failed.length + 1}／${rows.length}`;
+      const guest = {
+        name: r.name, phone: r.phone, side, relation, attend,
+        // 人數大於 1 時，同行親友先用「〇〇的同行 1」佔位，之後可以在「編輯」改成真名
+        companions: attend === 'yes' ? Array.from({ length: r.n - 1 }, (_, i) => ({ name: r.name + '的同行' + (i + 1), phone: '', veg: false })) : [],
+        selfveg: false, kids: 0, paper: false, address: '', message: '',
+      };
+      try { await call('admin_save', { id: null, guest }); done++; }
+      catch (err) { failed.push({ line: r.line, why: err.message }); }
+    }
+    btn.disabled = false; btn.textContent = '新增';
+    await load().catch(() => {});
+    if (failed.length) {
+      $('#bulk-text').value = failed.map(f => f.line).join('\n');
+      $('#bulk-err').textContent = `成功 ${done} 筆，下面 ${failed.length} 筆沒有新增（已留在上面的格子裡）：\n` + failed.map(f => '・' + f.line + '：' + f.why).join('\n');
+      bulkPreview();
+    } else {
+      $('#bulk-modal').hidden = true;
+      toast(`已新增 ${done} 筆`);
+    }
+  });
+
   // ---------- 分頁 ----------
   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t === tab));
@@ -729,7 +823,12 @@
       ps.map(p => [p.table ? label(p.table) : '未排', p.name, p.veg ? '素' : '', p.g.side, p.g.relation, p.of || '', '\t' + p.g.phone]));
   });
 
-  if (KEY) load().catch(() => { KEY = ''; });
+  // 之前登入過就直接進後台；如果密碼已經被換掉或權限被收回，清掉記住的密碼、回到登入畫面
+  if (KEY) load().catch(err => {
+    KEY = '';
+    try { sessionStorage.removeItem('wedding-admin-key'); localStorage.removeItem('wedding-admin-key'); } catch (e) {}
+    $('#login-err').textContent = /密碼|權限/.test(err.message) ? '之前記住的密碼已經失效，請重新輸入' : err.message;
+  });
 })();
 </script>
 </body>
