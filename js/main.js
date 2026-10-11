@@ -2,7 +2,8 @@
   'use strict';
   const CFG = window.WEDDING_CONFIG || {};
   const isLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-  const API = CFG.API_URL || (isLocal ? '/api' : '');
+  // 在自己電腦上預覽時一律用模擬後端，才不會把測試資料寫進正式的試算表
+  const API = isLocal ? '/api' : (CFG.API_URL || '');
   const STORE_KEY = 'wedding-rsvp-draft';
 
   // ---------- 封面信封與開場動畫 ----------
