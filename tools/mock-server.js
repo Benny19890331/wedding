@@ -10,7 +10,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const DATA = path.join(__dirname, 'mock-data.json');
 const PORT = 5173;
-const OWNER_KEY = 'test-groom';
+const OWNER_KEY_DEFAULT = 'test-groom';
 const OWNER = { name: '蕭苰栯', role: '新郎' };
 const LEVELS = ['edit', 'view'];
 const SIDES = ['男方親友', '女方親友', '共同朋友'];
@@ -87,8 +87,17 @@ function handle(b) {
     save(db); return { ok: true, updated: false, name: inp.name };
   }
   let me = null;
-  if (b.key && b.key === OWNER_KEY) me = { name: OWNER.name, role: OWNER.role, level: 'owner' };
-  else if (b.key) { const u = db.users.find(x => x.key === b.key); if (u) me = { name: u.name, role: u.role, level: u.level }; }
+  const ownerKey = db.ownerKey || OWNER_KEY_DEFAULT;
+  if (b.key && b.key === ownerKey) me = { name: OWNER.name, role: OWNER.role, level: 'owner' };
+  else if (b.key) { const u = db.users.find(x => x.key === b.key); if (u) me = { uid: u.uid, name: u.name, role: u.role, level: u.level }; }
+  const checkKey = (k, exceptUid) => {
+    k = String(k ?? '').trim();
+    if (k.length < 6 || k.length > 40) throw new Error('密碼長度要 6 到 40 個字');
+    if (/\s/.test(k)) throw new Error('密碼不能有空白');
+    if (exceptUid !== 'OWNER' && k === ownerKey) throw new Error('這組密碼已經有人使用，請換一組');
+    if (db.users.some(u => u.key === k && u.uid !== exceptUid)) throw new Error('這組密碼已經有人使用，請換一組');
+    return k;
+  };
   if (!me) throw new Error('密碼錯誤，或權限已被收回');
   const stamp = me.name + '（' + me.role + '） ' + now();
   const edit = () => { if (me.level === 'view') throw new Error('你的權限是「只能看」，不能修改'); };
@@ -97,6 +106,11 @@ function handle(b) {
   if (['admin_users', 'admin_user_save', 'admin_user_delete'].includes(b.action)) owner();
   switch (b.action) {
     case 'admin_list': return { ok: true, me, guests: db.guests, tables: db.tables };
+    case 'admin_set_key': {
+      if (me.level === 'owner') db.ownerKey = checkKey(b.newKey, 'OWNER');
+      else { const k = checkKey(b.newKey, me.uid); db.users.find(v => v.uid === me.uid).key = k; }
+      save(db); return { ok: true };
+    }
     case 'admin_users': return { ok: true, users: db.users };
     case 'admin_user_save': {
       const u = b.user || {};
@@ -106,10 +120,10 @@ function handle(b) {
       const level = LEVELS.includes(u.level) ? u.level : 'view';
       if (u.uid) {
         const x = db.users.find(v => v.uid === u.uid); if (!x) throw new Error('找不到這份權限');
-        Object.assign(x, { name, role, level }); if (u.regen) x.key = randKey();
+        Object.assign(x, { name, role, level }); if (u.key) x.key = checkKey(u.key, x.uid); else if (u.regen) x.key = randKey();
       } else {
         if (db.users.length >= 20) throw new Error('最多發放 20 份權限');
-        db.users.push({ uid: 'U' + Date.now().toString(36).toUpperCase(), name, role, level, key: randKey(), createdAt: now() });
+        db.users.push({ uid: 'U' + Date.now().toString(36).toUpperCase(), name, role, level, key: u.key ? checkKey(u.key, '') : randKey(), createdAt: now() });
       }
       save(db); return { ok: true, users: db.users };
     }

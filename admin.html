@@ -144,6 +144,7 @@
         <button class="btn ghost small" id="csv">匯出名單</button>
         <button class="btn ghost small" id="csv-seat">匯出座位表</button>
         <button class="btn ghost small" id="refresh">重新整理</button>
+        <button class="btn ghost small" id="pw">修改我的密碼</button>
         <button class="btn ghost small" id="logout">登出</button>
       </div>
     </header>
@@ -217,6 +218,9 @@
           <select id="u-level" aria-label="權限"><option value="edit">可編輯</option><option value="view">只能看</option></select>
           <button class="btn small" type="button" id="u-add">發放</button>
         </div>
+        <label class="f" style="margin-top:8px">密碼（留空會自動產生一組；也可以自己訂，6 個字以上）
+          <input id="u-key" maxlength="40" placeholder="留空＝自動產生" autocomplete="off" style="max-width:320px">
+        </label>
       </div>
       <div class="table-wrap"><table style="min-width:720px">
         <thead><tr><th>稱呼</th><th>身分</th><th>權限</th><th>密碼</th><th>發放時間</th><th></th></tr></thead>
@@ -265,6 +269,22 @@
     </div>
   </form>
 </div>
+<!-- 修改自己的密碼 -->
+<div class="modal" id="pw-modal" hidden>
+  <form class="sheet" id="pw-form" novalidate style="width:min(400px,100%)">
+    <h2>修改我的密碼</h2>
+    <p class="hint" style="margin:0">改成自己好記的密碼。至少 6 個字，不能有空白；建議不要用生日或手機號碼。改完之後，舊密碼立刻失效。</p>
+    <label class="f">新密碼<input type="password" id="pw-new" autocomplete="new-password" maxlength="40" required></label>
+    <label class="f">再輸入一次<input type="password" id="pw-new2" autocomplete="new-password" maxlength="40" required></label>
+    <label class="ck"><input type="checkbox" id="pw-show"> 顯示密碼</label>
+    <p class="err" id="pw-err"></p>
+    <div class="sheet-acts">
+      <button class="btn ghost" type="button" id="pw-cancel">取消</button>
+      <button class="btn" type="submit" id="pw-save">儲存新密碼</button>
+    </div>
+  </form>
+</div>
+
 <!-- 批次新增：一次貼上很多位（給不會用電子喜帖的長輩） -->
 <div class="modal" id="bulk-modal" hidden>
   <div class="sheet">
@@ -702,7 +722,9 @@
   }
   $('#u-add').addEventListener('click', async () => {
     const user = { name: $('#u-name').value.trim(), role: $('#u-role').value.trim(), level: $('#u-level').value };
-    if (await saveUser(user, '已發放，把密碼傳給本人就能登入')) { $('#u-name').value = ''; $('#u-role').value = ''; }
+    const custom = $('#u-key').value.trim();
+    if (custom) user.key = custom;
+    if (await saveUser(user, '已發放，把密碼傳給本人就能登入')) { $('#u-name').value = ''; $('#u-role').value = ''; $('#u-key').value = ''; }
   });
   $('#urows').addEventListener('change', e => {
     if (e.target.dataset.ulevel === undefined) return;
@@ -729,6 +751,39 @@
     if (isRegen) return saveUser({ uid: u.uid, name: u.name, role: u.role, level: u.level, regen: true }, u.name + ' 的密碼已更換，舊密碼失效');
     try { users = (await call('admin_user_delete', { uid: u.uid })).users; renderUsers(); toast('已收回 ' + u.name + ' 的權限'); }
     catch (err) { toast(err.message); }
+  });
+
+  // ---------- 修改自己的密碼 ----------
+  $('#pw').addEventListener('click', () => {
+    $('#pw-new').value = ''; $('#pw-new2').value = ''; $('#pw-err').textContent = ''; $('#pw-show').checked = false;
+    $('#pw-new').type = $('#pw-new2').type = 'password';
+    $('#pw-modal').hidden = false;
+    $('#pw-new').focus();
+  });
+  $('#pw-cancel').addEventListener('click', () => { $('#pw-modal').hidden = true; });
+  $('#pw-show').addEventListener('change', e => { $('#pw-new').type = $('#pw-new2').type = e.target.checked ? 'text' : 'password'; });
+  $('#pw-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const a = $('#pw-new').value.trim(), b = $('#pw-new2').value.trim();
+    const fail = m => { $('#pw-err').textContent = m; };
+    if (a.length < 6) return fail('密碼至少要 6 個字');
+    if (/\s/.test(a)) return fail('密碼不能有空白');
+    if (a !== b) return fail('兩次輸入的密碼不一樣');
+    $('#pw-save').disabled = true; fail('');
+    try {
+      await call('admin_set_key', { newKey: a });
+      KEY = a;                                  // 之後的操作改用新密碼；這台裝置記住的也一起換掉
+      try {
+        if (localStorage.getItem('wedding-admin-key')) localStorage.setItem('wedding-admin-key', a);
+        if (sessionStorage.getItem('wedding-admin-key')) sessionStorage.setItem('wedding-admin-key', a);
+      } catch (err) {}
+      $('#pw-modal').hidden = true;
+      toast('密碼已修改，之後請用新密碼登入');
+    } catch (err) {
+      fail(err.message === '未知的動作' ? '後端程式還是舊版，要先到 Apps Script 更新並重新部署，這個功能才能用' : err.message);
+    } finally {
+      $('#pw-save').disabled = false;
+    }
   });
 
   // ---------- 批次新增 ----------

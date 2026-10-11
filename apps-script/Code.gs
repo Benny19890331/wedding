@@ -59,6 +59,15 @@ function setup() {
   Logger.log('要修改新郎的密碼：左側 ⚙️ 專案設定 → 指令碼屬性，修改 KEY_OWNER 的值');
 }
 
+/**
+ * 忘記新郎的後台密碼時用：在編輯器上方選 showMyPassword，按「執行」，下方的執行紀錄會顯示目前的密碼。
+ * 不會更改任何資料。
+ */
+function showMyPassword() {
+  const key = PropertiesService.getScriptProperties().getProperty('KEY_OWNER');
+  Logger.log(key ? '新郎（擁有者）目前的後台密碼：' + key : '還沒有密碼，請先執行 setup');
+}
+
 function doGet() {
   return json({ ok: true, msg: '婚宴回覆 API 運作中' });
 }
@@ -81,6 +90,7 @@ function doPost(e) {
       case 'admin_assign': edit(); return json(adminAssign(body.id, body.idx, body.table, me.stamp));
       case 'admin_delete': edit(); return json(adminDelete(body.id));
       case 'admin_tables': edit(); return json(adminSaveTables(body.tables));
+      case 'admin_set_key': return json(setMyKey(me, body.newKey));
       case 'admin_users': owner(); return json({ ok: true, users: readUsers() });
       case 'admin_user_save': owner(); return json(userSave(body.user || {}));
       case 'admin_user_delete': owner(); return json(userDelete(body.uid));
@@ -175,7 +185,7 @@ function requireAdmin(b) {
     me = { name: OWNER.name, role: OWNER.role, level: 'owner' };
   } else if (key) {
     const u = readUsers().find(x => x.key === key);
-    if (u) me = { name: u.name, role: u.role, level: u.level };
+    if (u) me = { uid: u.uid, name: u.name, role: u.role, level: u.level };
   }
   if (!me) {
     Utilities.sleep(1200); // 減緩猜密碼
@@ -201,7 +211,39 @@ function writeUsers(list) {
   PropertiesService.getScriptProperties().setProperty('USERS', JSON.stringify(list));
 }
 
-/** 發放一份新權限（uid 留空），或修改既有的；regen=true 會換一組新密碼（舊密碼立刻失效） */
+/** 檢查自訂密碼：6–40 個字、不能有空白，而且不能和別人的密碼一樣（exceptUid 是自己，不用和自己比） */
+function checkKey(k, exceptUid) {
+  k = String(k === undefined || k === null ? '' : k).trim();
+  if (k.length < 6 || k.length > 40) throw new Error('密碼長度要 6 到 40 個字');
+  if (/\s/.test(k)) throw new Error('密碼不能有空白');
+  const ownerKey = PropertiesService.getScriptProperties().getProperty('KEY_OWNER');
+  if (exceptUid !== 'OWNER' && k === ownerKey) throw new Error('這組密碼已經有人使用，請換一組');
+  if (readUsers().some(u => u.key === k && u.uid !== exceptUid)) throw new Error('這組密碼已經有人使用，請換一組');
+  return k;
+}
+
+/** 修改自己的密碼（新郎或被發放權限的人都可以改自己的） */
+function setMyKey(me, newKey) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    if (me.level === 'owner') {
+      PropertiesService.getScriptProperties().setProperty('KEY_OWNER', checkKey(newKey, 'OWNER'));
+    } else {
+      const k = checkKey(newKey, me.uid);
+      const list = readUsers();
+      const x = list.find(v => v.uid === me.uid);
+      if (!x) throw new Error('找不到你的權限');
+      x.key = k;
+      writeUsers(list);
+    }
+    return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** 發放一份新權限（uid 留空），或修改既有的；regen=true 會換一組新密碼（舊密碼立刻失效）；key 有填就用自訂的密碼 */
 function userSave(u) {
   const name = clean(u.name, 20), role = clean(u.role, 20);
   if (!name) throw new Error('請填寫稱呼');
@@ -215,10 +257,11 @@ function userSave(u) {
       const x = list.find(v => v.uid === u.uid);
       if (!x) throw new Error('找不到這份權限');
       x.name = name; x.role = role; x.level = level;
-      if (u.regen) x.key = randKey();
+      if (u.key) x.key = checkKey(u.key, x.uid);
+      else if (u.regen) x.key = randKey();
     } else {
       if (list.length >= 20) throw new Error('最多發放 20 份權限');
-      list.push({ uid: 'U' + Date.now().toString(36).toUpperCase(), name: name, role: role, level: level, key: randKey(), createdAt: now() });
+      list.push({ uid: 'U' + Date.now().toString(36).toUpperCase(), name: name, role: role, level: level, key: u.key ? checkKey(u.key, '') : randKey(), createdAt: now() });
     }
     writeUsers(list);
     return { ok: true, users: list };
