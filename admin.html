@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>婚宴後台｜賓客與排桌</title>
+<link rel="icon" href="assets/favicon.png">
+<style>
+  :root {
+    --milk: #F3EBE0; --paper: #FBF7F0; --latte: #E8DBC9; --tea: #B08D6A; --ink: #5C4634;
+    --muted: #8C7663; --gold: #C9A45C; --red: #B22E2E; --green: #4E7D4B; --blue: #2F5BB5; --pink: #B8477A;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--milk); color: var(--ink); font: 15px/1.6 system-ui, 'Microsoft JhengHei', 'PingFang TC', sans-serif; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 18px 16px 70px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: .06em; }
+  h1 span { color: var(--red); }
+  .who { font-size: 13px; padding: 2px 10px; border-radius: 999px; background: var(--ink); color: #fff; margin-left: 8px; vertical-align: 2px; }
+  .btn { border: 0; border-radius: 999px; padding: 8px 16px; background: var(--red); color: #fff; cursor: pointer; font-size: 14px; }
+  .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--latte); }
+  .btn.small { padding: 4px 11px; font-size: 13px; }
+  .btn:disabled { opacity: .5; cursor: wait; }
+  .card { background: var(--paper); border-radius: 14px; box-shadow: 0 0 0 1px rgba(201,164,92,.3); padding: 16px; }
+
+  .login { max-width: 360px; margin: 16vh auto 0; text-align: center; }
+  .login input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--latte); border-radius: 10px; margin: 12px 0; font-size: 16px; }
+  .err { color: var(--red); font-size: 14px; min-height: 1.4em; margin: 0; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .stat { background: var(--paper); border-radius: 12px; padding: 10px 14px; box-shadow: 0 0 0 1px rgba(201,164,92,.3); }
+  .stat small { display: block; color: var(--muted); font-size: 12px; }
+  .stat b { font-size: 21px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .stat b.red { color: var(--red); }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .tab { border: 0; background: transparent; padding: 8px 16px; border-radius: 999px; cursor: pointer; }
+  .tab[aria-selected="true"] { background: var(--ink); color: #fff; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .toolbar input[type=search], .toolbar select { padding: 7px 10px; border: 1.5px solid var(--latte); border-radius: 10px; background: #fff; }
+  .toolbar input[type=search] { flex: 1 1 180px; }
+
+  .table-wrap { overflow-x: auto; background: var(--paper); border-radius: 14px; box-shadow: 0 0 0 1px rgba(201,164,92,.3); }
+  table { border-collapse: collapse; width: 100%; min-width: 1040px; font-size: 14px; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--latte); vertical-align: top; }
+  th { background: #f6efe4; font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none; }
+  tr.no td { color: var(--muted); }
+  td select { padding: 4px 6px; border: 1.5px solid var(--latte); border-radius: 8px; background: #fff; max-width: 120px; }
+  .sub { font-size: 12.5px; color: var(--muted); margin-top: 3px; max-width: 250px; }
+  .msg { max-width: 200px; color: var(--muted); font-size: 13px; }
+  .tag { display: inline-block; font-size: 12px; padding: 0 7px; border-radius: 999px; margin: 1px 3px 1px 0; white-space: nowrap; }
+  .tag.veg { background: #e3efdc; color: var(--green); }
+  .tag.dup { background: #fbe3e3; color: var(--red); }
+  .tag.edit { background: var(--latte); color: var(--ink); }
+  .tag.yes { background: #f7e7c6; color: #8a6420; }
+  .tag.no { background: #eee; color: #888; }
+  .tag.groom { background: #e1e9f8; color: var(--blue); }
+  .tag.bride { background: #f8e1ec; color: var(--pink); }
+  .tag.both { background: #ece4f5; color: #6b4fa0; }
+  .tag.rel { background: #fff; box-shadow: inset 0 0 0 1px var(--latte); color: var(--ink); }
+  .acts { white-space: nowrap; }
+  .confirm-del { color: var(--red) !important; }
+
+  /* 排桌 */
+  .seat-layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 820px) { .seat-layout { grid-template-columns: 1fr; } }
+  .pool { position: sticky; top: 10px; max-height: calc(100vh - 20px); overflow: auto; }
+  .pool h3, .tcard h3 { margin: 0 0 8px; font-size: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .tcard { background: var(--paper); border-radius: 14px; padding: 14px; box-shadow: 0 0 0 1px rgba(201,164,92,.3); min-height: 120px; }
+  .tcard.over { box-shadow: 0 0 0 2px var(--red); }
+  .tcard.drop, .pool.drop { box-shadow: 0 0 0 3px var(--gold); background: #fffaf0; }
+  .tcard.vegt { background: #f3f8ef; }
+  .bar { height: 6px; background: var(--latte); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+  .bar i { display: block; height: 100%; background: var(--gold); }
+  .tcard.over .bar i { background: var(--red); }
+  .seat-count { font-size: 13px; color: var(--muted); font-weight: 400; white-space: nowrap; }
+  .tcard.over .seat-count { color: var(--red); font-weight: 600; }
+  .person {
+    display: flex; justify-content: space-between; gap: 6px; align-items: center;
+    background: #fff; border-radius: 9px; padding: 5px 9px; margin-bottom: 6px;
+    box-shadow: 0 0 0 1px var(--latte); cursor: grab; font-size: 14px; border-left: 4px solid var(--latte);
+  }
+  .person.groom { border-left-color: var(--blue); } .person.bride { border-left-color: var(--pink); } .person.both { border-left-color: #6b4fa0; }
+  .person.sel { box-shadow: 0 0 0 2px var(--red); }
+  .person small { color: var(--muted); font-size: 12px; }
+  .person button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 2px; }
+  .person .warn { color: var(--red); font-size: 12px; }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 8px 0; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin: 0 0 10px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+
+  .tset { display: grid; gap: 8px; max-width: 560px; }
+  .tset-row { display: grid; grid-template-columns: 1fr 90px 1fr 34px; gap: 8px; }
+  .tset-row input { padding: 7px 10px; border: 1.5px solid var(--latte); border-radius: 10px; background: #fff; width: 100%; }
+
+  /* 編輯視窗 */
+  .modal { position: fixed; inset: 0; background: rgba(60, 40, 25, .45); display: grid; place-items: center; padding: 14px; z-index: 20; }
+  .sheet { background: var(--paper); border-radius: 16px; padding: 20px; width: min(560px, 100%); max-height: 92vh; overflow: auto; display: grid; gap: 12px; }
+  .sheet h2 { margin: 0; font-size: 18px; }
+  .f { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  .f input, .f select, .f textarea { padding: 8px 10px; border: 1.5px solid var(--latte); border-radius: 10px; background: #fff; font-size: 15px; color: var(--ink); width: 100%; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ck { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); }
+  .ck input { width: 18px; height: 18px; accent-color: var(--red); }
+  .crow { display: grid; grid-template-columns: 1fr 1fr auto 30px; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .crow input[type=text], .crow input[type=tel] { padding: 7px 9px; border: 1.5px solid var(--latte); border-radius: 9px; background: #fff; width: 100%; font-size: 14px; }
+  .sheet-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+  .urow { display: grid; grid-template-columns: 1fr 1fr 110px auto; gap: 8px; }
+  @media (max-width: 600px) { .urow { grid-template-columns: 1fr 1fr; } }
+  .urow input, .urow select, #urows select { padding: 7px 10px; border: 1.5px solid var(--latte); border-radius: 10px; background: #fff; width: 100%; }
+  .pw { font-family: ui-monospace, Consolas, monospace; letter-spacing: .06em; user-select: all; }
+  /* 只能看的人：把會修改資料的按鈕都收起來 */
+  .readonly #add, .readonly [data-edit], .readonly [data-del], .readonly [data-unseat], .readonly #t-add, .readonly #t-save, .readonly [data-rm] { display: none !important; }
+  .readonly .person { cursor: default; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 30; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <form class="card login" id="login">
+    <h1>婚宴後台 <span>♥</span></h1>
+    <p class="hint">請輸入你自己的後台密碼</p>
+    <input type="password" id="key" autocomplete="current-password" required>
+    <p class="err" id="login-err"></p>
+    <button class="btn" type="submit" id="login-btn">登入</button>
+  </form>
+
+  <div id="app" hidden>
+    <header>
+      <h1>蕭苰栯 <span>♥</span> 洪韻雯・賓客後台<span class="who" id="who"></span></h1>
+      <div>
+        <button class="btn small" id="add">＋ 新增賓客</button>
+        <button class="btn ghost small" id="csv">匯出名單</button>
+        <button class="btn ghost small" id="csv-seat">匯出座位表</button>
+        <button class="btn ghost small" id="refresh">重新整理</button>
+        <button class="btn ghost small" id="logout">登出</button>
+      </div>
+    </header>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="list" aria-selected="true">賓客名單</button>
+      <button class="tab" role="tab" data-tab="seat" aria-selected="false">排桌</button>
+      <button class="tab" role="tab" data-tab="tables" aria-selected="false">桌次設定</button>
+      <button class="tab" role="tab" data-tab="users" aria-selected="false" id="tab-users" hidden>權限管理</button>
+    </div>
+    <p class="hint" id="ro-note" hidden>你的權限是「只能看」：可以查看名單、座位和匯出，但不能修改。</p>
+
+    <!-- 名單 -->
+    <section data-panel="list">
+      <div class="toolbar">
+        <input type="search" id="q" placeholder="搜尋姓名、手機、同行親友、留言…">
+        <select id="f-attend"><option value="">全部出席狀態</option><option value="yes">出席</option><option value="no">不克出席</option></select>
+        <select id="f-side"><option value="">男方＋女方</option><option>男方親友</option><option>女方親友</option><option>共同朋友</option><option value="__none">未標記</option></select>
+        <select id="f-rel"><option value="">全部關係</option></select>
+        <select id="f-table"><option value="">全部桌次</option></select>
+        <label style="font-size:14px"><input type="checkbox" id="f-dup"> 只看疑似重複</label>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th data-sort="name">姓名</th><th data-sort="phone">手機</th><th data-sort="side">關係</th>
+          <th data-sort="attend">出席</th><th data-sort="count">人數</th><th>餐點</th><th data-sort="kids">兒童椅</th>
+          <th>桌次</th><th>紙本喜帖</th><th>祝福</th><th data-sort="updatedAt">最後更新</th><th></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </section>
+
+    <!-- 排桌 -->
+    <section data-panel="seat" hidden>
+      <p class="hint">一個人一個位子。把人拖到桌子上；手機上可以先點人，再點要放的桌子。同行親友可以和主賓排在不同桌。</p>
+      <p class="legend"><span><i style="background:var(--blue)"></i>男方</span><span><i style="background:var(--pink)"></i>女方</span><span><i style="background:#6b4fa0"></i>共同朋友</span><span><span class="tag veg">素</span>吃素</span></p>
+      <div class="seat-layout">
+        <div class="card pool" id="pool" data-table=""></div>
+        <div class="tables" id="tables"></div>
+      </div>
+    </section>
+
+    <!-- 桌次設定 -->
+    <section data-panel="tables" hidden>
+      <p class="hint">預設 12 桌：主桌 12 人、第 1–10 桌各 10 人、素食桌 10 人。可以改桌名、座位數，或新增、刪除桌子，改完按「儲存桌次」。</p>
+      <div class="card">
+        <div class="tset" id="tset"></div>
+        <div class="toolbar" style="margin-top:12px">
+          <button class="btn ghost small" id="t-add">＋ 新增一桌</button>
+          <button class="btn small" id="t-save">儲存桌次</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 權限管理（只有新郎看得到） -->
+    <section data-panel="users" hidden>
+      <p class="hint">在這裡發放後台權限。每個人有自己的密碼，把密碼傳給本人就能登入；可以隨時改權限、換密碼或收回。</p>
+      <div class="card" style="margin-bottom:12px">
+        <div class="f" style="margin-bottom:6px">發放新權限</div>
+        <div class="toolbar" style="margin-bottom:8px">
+          <span style="font-size:13px;color:var(--muted)">快速選身分：</span>
+          <button class="btn ghost small" type="button" data-preset="新娘">新娘</button>
+          <button class="btn ghost small" type="button" data-preset="婚禮秘書">婚禮秘書</button>
+          <button class="btn ghost small" type="button" data-preset="媒人婆">媒人婆</button>
+        </div>
+        <div class="urow">
+          <input id="u-name" maxlength="20" placeholder="稱呼（例：韻雯）" aria-label="稱呼">
+          <input id="u-role" maxlength="20" placeholder="身分（例：新娘）" aria-label="身分">
+          <select id="u-level" aria-label="權限"><option value="edit">可編輯</option><option value="view">只能看</option></select>
+          <button class="btn small" type="button" id="u-add">發放</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table style="min-width:720px">
+        <thead><tr><th>稱呼</th><th>身分</th><th>權限</th><th>密碼</th><th>發放時間</th><th></th></tr></thead>
+        <tbody id="urows"></tbody>
+      </table></div>
+    </section>
+  </div>
+</div>
+
+<!-- 新增／編輯賓客 -->
+<div class="modal" id="modal" hidden>
+  <form class="sheet" id="editor" novalidate>
+    <h2 id="ed-title">編輯賓客</h2>
+    <div class="two">
+      <label class="f">姓名<input id="ed-name" maxlength="30" required></label>
+      <label class="f">手機（手動新增可不填）<input id="ed-phone" type="tel" maxlength="15"></label>
+    </div>
+    <div class="two">
+      <label class="f">男方／女方
+        <select id="ed-side"><option value="">未標記</option><option>男方親友</option><option>女方親友</option><option>共同朋友</option></select>
+      </label>
+      <label class="f">關係（可自己打字）
+        <input id="ed-rel" maxlength="20" list="rel-list" placeholder="例：親戚、同事、大學同學">
+        <datalist id="rel-list"><option>親戚</option><option>長輩</option><option>朋友</option><option>同事</option><option>同學</option><option>主管</option><option>鄰居</option><option>其他</option></datalist>
+      </label>
+    </div>
+    <label class="f">是否出席
+      <select id="ed-attend"><option value="yes">出席</option><option value="no">不克出席</option></select>
+    </label>
+    <div id="ed-attend-box" style="display:grid;gap:12px">
+      <label class="ck"><input type="checkbox" id="ed-selfveg"> 本人吃素</label>
+      <div>
+        <div class="f" style="margin-bottom:6px">同行親友（姓名、電話、是否吃素）</div>
+        <div id="ed-comps"></div>
+        <button class="btn ghost small" type="button" id="ed-comp-add">＋ 新增一位同行親友</button>
+      </div>
+      <label class="f">嬰兒／兒童座椅數量<input id="ed-kids" type="number" min="0" max="10" value="0"></label>
+    </div>
+    <label class="ck"><input type="checkbox" id="ed-paper"> 需要紙本喜帖</label>
+    <label class="f" id="ed-addr-box" hidden>寄送地址<input id="ed-address" maxlength="120"></label>
+    <label class="f">祝福／備註<textarea id="ed-message" rows="2" maxlength="300"></textarea></label>
+    <p class="err" id="ed-err"></p>
+    <div class="sheet-acts">
+      <button class="btn ghost" type="button" id="ed-cancel">取消</button>
+      <button class="btn" type="submit" id="ed-save">儲存</button>
+    </div>
+  </form>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+  const CFG = window.WEDDING_CONFIG || {};
+  const isLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  const API = CFG.API_URL || (isLocal ? '/api' : '');
+  const $ = s => document.querySelector(s);
+  let KEY = '';
+  try { KEY = sessionStorage.getItem('wedding-admin-key') || ''; } catch (e) {}
+  let guests = [], tables = [], me = { name: '', role: '', level: 'view' }, role = '', users = [], sortKey = 'updatedAt', sortDir = -1, selected = null, editingId = null;
+  const canEdit = () => me.level !== 'view';
+
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const num = x => parseInt(x, 10) || 0;
+  const normName = s => String(s || '').replace(/\s/g, '');
+  const label = no => /^\d+$/.test(no) ? '第 ' + no + ' 桌' : no;
+  const sideCls = s => s === '男方親友' ? 'groom' : s === '女方親友' ? 'bride' : s === '共同朋友' ? 'both' : '';
+  const count = g => g.attend ? 1 + g.companions.length : 0;
+  const vegN = g => g.attend ? (g.selfveg ? 1 : 0) + g.companions.filter(c => c.veg).length : 0;
+  /** 把一筆回覆攤開成一個一個人（本人＋同行親友），排桌用 */
+  const persons = g => !g.attend ? [] : [{ g, idx: 0, name: g.name, veg: g.selfveg, table: g.seats[0] || '' }]
+    .concat(g.companions.map((c, i) => ({ g, idx: i + 1, name: c.name, veg: c.veg, table: g.seats[i + 1] || '', of: g.name })));
+  const allPersons = () => guests.reduce((a, g) => a.concat(persons(g)), []);
+
+  function toast(msg) {
+    const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  async function call(action, extra) {
+    if (!API) throw new Error('尚未設定 API_URL（config.js）');
+    const res = await fetch(API, { method: 'POST', body: JSON.stringify(Object.assign({ action, key: KEY }, extra || {})) });
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.error || '操作失敗');
+    return out;
+  }
+
+  // ---------- 登入 ----------
+  $('#login').addEventListener('submit', async e => {
+    e.preventDefault();
+    KEY = $('#key').value;
+    $('#login-btn').disabled = true;
+    $('#login-err').textContent = '';
+    try {
+      await load();
+      try { sessionStorage.setItem('wedding-admin-key', KEY); } catch (e) {}
+    } catch (err) {
+      $('#login-err').textContent = err.message;
+    } finally {
+      $('#login-btn').disabled = false;
+    }
+  });
+  $('#logout').addEventListener('click', () => {
+    try { sessionStorage.removeItem('wedding-admin-key'); } catch (e) {}
+    location.reload();
+  });
+  $('#refresh').addEventListener('click', () => load().then(() => toast('已更新')).catch(err => toast(err.message)));
+
+  async function load() {
+    const out = await call('admin_list');
+    guests = out.guests; tables = out.tables; me = out.me || me; role = me.role;
+    $('#who').textContent = me.name + '（' + me.role + '）';
+    $('#app').classList.toggle('readonly', !canEdit());
+    $('#ro-note').hidden = canEdit();
+    $('#tab-users').hidden = me.level !== 'owner';
+    if (me.level === 'owner') loadUsers();
+    $('#login').hidden = true;
+    $('#app').hidden = false;
+    render();
+  }
+
+  // ---------- 疑似重複：同名但是不同筆 ----------
+  function dupSet() {
+    const by = {};
+    guests.forEach(g => { const k = normName(g.name); (by[k] = by[k] || []).push(g.id); });
+    const s = new Set();
+    Object.values(by).forEach(ids => { if (ids.length > 1) ids.forEach(i => s.add(i)); });
+    return s;
+  }
+
+  function render() {
+    renderStats(); renderFilters(); renderList(); renderSeat(); renderTableSettings();
+  }
+
+  function renderStats() {
+    const yes = guests.filter(g => g.attend);
+    const ps = allPersons();
+    const cap = tables.reduce((a, t) => a + num(t.cap), 0);
+    const by = s => yes.filter(g => g.side === s).reduce((a, g) => a + count(g), 0);
+    const items = [
+      ['回覆', guests.length + ' 筆'],
+      ['出席人數', ps.length, 'red'],
+      ['不克出席', guests.length - yes.length + ' 筆'],
+      ['男方／女方／共同', by('男方親友') + '／' + by('女方親友') + '／' + by('共同朋友')],
+      ['葷／素', (ps.length - ps.filter(p => p.veg).length) + '／' + ps.filter(p => p.veg).length],
+      ['兒童椅', yes.reduce((a, g) => a + num(g.kids), 0)],
+      ['紙本喜帖', guests.filter(g => g.paper).length + ' 份'],
+      ['已排桌', ps.filter(p => p.table).length + '／' + ps.length],
+      ['總座位', cap + '（' + tables.length + ' 桌）'],
+    ];
+    $('#stats').innerHTML = items.map(([k, v, c]) => `<div class="stat"><small>${k}</small><b class="${c || ''}">${v}</b></div>`).join('');
+  }
+
+  function renderFilters() {
+    const st = $('#f-table'), cur = st.value;
+    st.innerHTML = '<option value="">全部桌次</option><option value="__none">有人還沒排桌</option>' +
+      tables.map(t => `<option value="${esc(t.no)}">${esc(label(t.no))}</option>`).join('');
+    st.value = cur;
+    const sr = $('#f-rel'), cr = sr.value;
+    const rels = Array.from(new Set(guests.map(g => g.relation).filter(Boolean))).sort();
+    sr.innerHTML = '<option value="">全部關係</option>' + rels.map(r => `<option>${esc(r)}</option>`).join('');
+    sr.value = cr;
+  }
+
+  function filtered() {
+    const q = $('#q').value.trim().toLowerCase();
+    const fa = $('#f-attend').value, fs = $('#f-side').value, fr = $('#f-rel').value, ft = $('#f-table').value, fd = $('#f-dup').checked;
+    const dups = dupSet();
+    return guests.filter(g => {
+      const seats = persons(g).map(p => p.table);
+      return (!q || [g.name, g.phone, g.message, g.address, g.relation].concat(g.companions.map(c => c.name + ' ' + c.phone)).join(' ').toLowerCase().includes(q)) &&
+        (!fa || (fa === 'yes') === g.attend) &&
+        (!fs || (fs === '__none' ? !g.side : g.side === fs)) && (!fr || g.relation === fr) &&
+        (!ft || (ft === '__none' ? seats.some(t => !t) : seats.includes(ft))) &&
+        (!fd || dups.has(g.id));
+    }).sort((a, b) => {
+      const v = g => sortKey === 'count' ? count(g) : sortKey === 'kids' ? num(g.kids) : sortKey === 'attend' ? (g.attend ? 1 : 0) : String(g[sortKey] || '');
+      const x = v(a), y = v(b);
+      return (typeof x === 'number' ? x - y : x.localeCompare(y, 'zh-Hant')) * sortDir;
+    });
+  }
+
+  function tableOptions(cur, mixed) {
+    return (mixed ? '<option value="__mixed" selected>分開坐</option>' : '') + '<option value="">未排</option>' +
+      tables.map(t => `<option value="${esc(t.no)}" ${!mixed && t.no === cur ? 'selected' : ''}>${esc(label(t.no))}</option>`).join('');
+  }
+
+  function renderList() {
+    const dups = dupSet();
+    const list = filtered();
+    $('#rows').innerHTML = list.length ? list.map(g => {
+      const ps = persons(g), seats = Array.from(new Set(ps.map(p => p.table)));
+      const mixed = seats.length > 1;
+      const v = vegN(g), n = count(g);
+      return `<tr class="${g.attend ? '' : 'no'}" data-id="${esc(g.id)}">
+        <td><b>${esc(g.name)}</b>${g.selfveg ? ' <span class="tag veg">素</span>' : ''}${dups.has(g.id) ? ' <span class="tag dup" title="有同名的另一筆回覆">疑似重複</span>' : ''}${g.edits ? ` <span class="tag edit">賓客改過 ${g.edits} 次</span>` : ''}
+          ${g.companions.length ? `<div class="sub">同行：${g.companions.map(c => esc(c.name) + (c.veg ? '（素）' : '') + (c.phone ? ' ' + esc(c.phone) : '')).join('、')}</div>` : ''}</td>
+        <td>${esc(g.phone || '—')}</td>
+        <td>${g.side ? `<span class="tag ${sideCls(g.side)}">${esc(g.side.replace('親友', '').replace('朋友', ''))}</span>` : '<span class="tag no">未標記</span>'}${g.relation ? `<span class="tag rel">${esc(g.relation)}</span>` : ''}</td>
+        <td><span class="tag ${g.attend ? 'yes' : 'no'}">${g.attend ? '出席' : '不克出席'}</span></td>
+        <td>${g.attend ? n : '—'}</td>
+        <td>${g.attend ? `葷 ${n - v}${v ? ` <span class="tag veg">素 ${v}</span>` : ''}` : '—'}</td>
+        <td>${num(g.kids) || '—'}</td>
+        <td>${g.attend ? `<select data-assign="${esc(g.id)}" title="整組一起排到同一桌" ${canEdit() ? '' : 'disabled'}>${tableOptions(seats[0], mixed)}</select>${mixed ? `<div class="sub">${ps.map(p => esc(p.name) + '：' + esc(p.table ? label(p.table) : '未排')).join('<br>')}</div>` : ''}` : '—'}</td>
+        <td>${g.paper ? esc(g.address) : '—'}</td>
+        <td class="msg">${esc(g.message)}</td>
+        <td style="font-size:13px">${esc(g.updatedAt)}${g.editedBy ? `<div class="sub">${esc(g.editedBy.replace(/ \d{4}\/.*$/, ''))} 修改</div>` : ''}</td>
+        <td class="acts"><button class="btn ghost small" data-edit="${esc(g.id)}">編輯</button> <button class="btn ghost small" data-del="${esc(g.id)}">刪除</button></td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="12" class="empty">沒有符合的資料</td></tr>';
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+      th.textContent = th.textContent.replace(/ [▲▼]$/, '') + (th.dataset.sort === sortKey ? (sortDir > 0 ? ' ▲' : ' ▼') : '');
+    });
+  }
+
+  ['#q', '#f-attend', '#f-side', '#f-rel', '#f-table', '#f-dup'].forEach(s => $(s).addEventListener('input', renderList));
+  document.querySelectorAll('th[data-sort]').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    sortDir = sortKey === k ? -sortDir : 1; sortKey = k;
+    renderList();
+  }));
+
+  $('#rows').addEventListener('change', e => {
+    const id = e.target.dataset.assign;
+    if (id && e.target.value !== '__mixed') assign(id, 'all', e.target.value);
+  });
+  $('#rows').addEventListener('click', async e => {
+    if (e.target.dataset.edit) return openEditor(e.target.dataset.edit);
+    const id = e.target.dataset.del;
+    if (!id) return;
+    const btn = e.target;
+    if (!btn.classList.contains('confirm-del')) {   // 按兩次才刪除
+      btn.classList.add('confirm-del'); btn.textContent = '確定刪除？';
+      setTimeout(() => { btn.classList.remove('confirm-del'); btn.textContent = '刪除'; }, 3000);
+      return;
+    }
+    btn.disabled = true;
+    try {
+      await call('admin_delete', { id });
+      guests = guests.filter(g => g.id !== id);
+      render(); toast('已刪除');
+    } catch (err) { toast(err.message); btn.disabled = false; }
+  });
+
+  /** idx：0 = 本人、1 起 = 同行親友、'all' = 整組 */
+  async function assign(id, idx, table) {
+    const g = guests.find(x => x.id === id);
+    if (!g) return;
+    if (!canEdit()) { render(); return toast('你的權限是「只能看」，不能排桌'); }
+    const prev = g.seats.slice();
+    const n = count(g);
+    while (g.seats.length < n) g.seats.push('');
+    if (idx === 'all') g.seats = g.seats.map(() => table); else g.seats[idx] = table;
+    render();
+    try {
+      await call('admin_assign', { id, idx, table });
+      const who = idx === 'all' ? g.name + (n > 1 ? ' 一行 ' + n + ' 人' : '') : persons(g)[idx].name;
+      toast(table ? `${who} → ${label(table)}` : `${who} 已移出桌次`);
+    } catch (err) {
+      g.seats = prev; render(); toast('儲存失敗：' + err.message);
+    }
+  }
+
+  // ---------- 排桌（一人一位） ----------
+  const pid = p => p.g.id + '|' + p.idx;
+  function chip(p, vegTable) {
+    const warn = p.veg && p.table && !vegTable ? '' : (!p.veg && vegTable ? ' <span class="warn" title="這位沒有勾吃素">非素食</span>' : '');
+    return `<div class="person ${sideCls(p.g.side)} ${selected === pid(p) ? 'sel' : ''}" draggable="${canEdit()}" data-pid="${esc(pid(p))}">
+      <span>${esc(p.name)}${p.veg ? ' <span class="tag veg">素</span>' : ''}${warn}${p.of ? ` <small>${esc(p.of)}的同行</small>` : (p.g.relation ? ` <small>${esc(p.g.relation)}</small>` : '')}</span>
+      ${p.table ? `<button title="移出" data-unseat="${esc(pid(p))}">✕</button>` : ''}
+    </div>`;
+  }
+
+  function renderSeat() {
+    const ps = allPersons();
+    const known = new Set(tables.map(t => t.no));
+    const pool = ps.filter(p => !p.table || !known.has(p.table));
+    $('#pool').innerHTML = `<h3>尚未排桌 <span class="seat-count">${pool.length} 人${pool.filter(p => p.veg).length ? '（素 ' + pool.filter(p => p.veg).length + '）' : ''}</span></h3>` +
+      (pool.length ? pool.map(p => chip(p, false)).join('') : '<div class="empty">全部排好了 🎉</div>');
+    $('#tables').innerHTML = tables.map(t => {
+      const inT = ps.filter(p => p.table === t.no);
+      const cap = num(t.cap), used = inT.length;
+      const vegT = /素/.test(t.no + t.note);
+      return `<div class="tcard ${used > cap ? 'over' : ''} ${vegT ? 'vegt' : ''}" data-table="${esc(t.no)}">
+        <h3>${esc(label(t.no))} <span class="seat-count">${used}／${cap} 位</span></h3>
+        <div class="bar"><i style="width:${cap ? Math.min(100, used / cap * 100) : 0}%"></i></div>
+        ${t.note ? `<p class="hint" style="margin:0 0 6px">${esc(t.note)}</p>` : ''}
+        ${inT.length ? inT.map(p => chip(p, vegT)).join('') : '<div class="empty">把人拖到這裡</div>'}
+      </div>`;
+    }).join('');
+  }
+
+  const seatPanel = document.querySelector('[data-panel="seat"]');
+  const splitPid = s => { const i = s.lastIndexOf('|'); return [s.slice(0, i), num(s.slice(i + 1))]; };
+  function moveTo(pidStr, table) {
+    const [id, idx] = splitPid(pidStr);
+    const g = guests.find(x => x.id === id);
+    if (g && (g.seats[idx] || '') !== table) assign(id, idx, table); else renderSeat();
+  }
+  seatPanel.addEventListener('dragstart', e => {
+    const el = e.target.closest('[data-pid]');
+    if (el) e.dataTransfer.setData('text/plain', el.dataset.pid);
+  });
+  seatPanel.addEventListener('dragover', e => {
+    const drop = e.target.closest('[data-table]');
+    if (!drop) return;
+    e.preventDefault();
+    seatPanel.querySelectorAll('.drop').forEach(x => x !== drop && x.classList.remove('drop'));
+    drop.classList.add('drop');
+  });
+  seatPanel.addEventListener('dragleave', e => {
+    const drop = e.target.closest('[data-table]');
+    if (drop && !drop.contains(e.relatedTarget)) drop.classList.remove('drop');
+  });
+  seatPanel.addEventListener('drop', e => {
+    const drop = e.target.closest('[data-table]');
+    if (!drop) return;
+    e.preventDefault();
+    drop.classList.remove('drop');
+    moveTo(e.dataTransfer.getData('text/plain'), drop.dataset.table);
+  });
+  // 點選模式（手機）
+  seatPanel.addEventListener('click', e => {
+    const un = e.target.closest('[data-unseat]');
+    if (un) { selected = null; return moveTo(un.dataset.unseat, ''); }
+    const c = e.target.closest('[data-pid]');
+    if (c) { selected = selected === c.dataset.pid ? null : c.dataset.pid; return renderSeat(); }
+    const drop = e.target.closest('[data-table]');
+    if (drop && selected) { const s = selected; selected = null; moveTo(s, drop.dataset.table); }
+  });
+
+  // ---------- 桌次設定 ----------
+  function renderTableSettings() {
+    $('#tset').innerHTML = '<div class="tset-row" style="font-size:13px;color:var(--muted)"><span>桌號／桌名</span><span>座位數</span><span>備註</span><span></span></div>' +
+      tables.map((t, i) => `<div class="tset-row" data-i="${i}">
+        <input data-k="no" value="${esc(t.no)}" maxlength="20" ${canEdit() ? '' : 'disabled'}>
+        <input data-k="cap" type="number" min="0" max="30" value="${num(t.cap)}" ${canEdit() ? '' : 'disabled'}>
+        <input data-k="note" value="${esc(t.note)}" maxlength="40" ${canEdit() ? '' : 'disabled'}>
+        <button class="btn ghost small" data-rm="${i}" title="刪除這桌">✕</button>
+      </div>`).join('');
+  }
+  $('#tset').addEventListener('input', e => {
+    const row = e.target.closest('[data-i]');
+    if (row) tables[row.dataset.i][e.target.dataset.k] = e.target.dataset.k === 'cap' ? num(e.target.value) : e.target.value;
+  });
+  $('#tset').addEventListener('click', e => {
+    const i = e.target.dataset.rm;
+    if (i !== undefined) { tables.splice(+i, 1); renderTableSettings(); }
+  });
+  $('#t-add').addEventListener('click', () => {
+    const nums = tables.map(t => num(t.no)).filter(Boolean);
+    tables.push({ no: String((nums.length ? Math.max.apply(null, nums) : 0) + 1), cap: 10, note: '' });
+    renderTableSettings();
+  });
+  $('#t-save').addEventListener('click', async () => {
+    const names = tables.map(t => String(t.no).trim());
+    if (names.some(n => !n)) return toast('桌號不能空白');
+    if (new Set(names).size !== names.length) return toast('桌號不能重複');
+    $('#t-save').disabled = true;
+    try {
+      const out = await call('admin_tables', { tables });
+      tables = out.tables; render(); toast('桌次已儲存');
+    } catch (err) { toast(err.message); }
+    finally { $('#t-save').disabled = false; }
+  });
+
+  // ---------- 新增／編輯賓客 ----------
+  function compRow(c) {
+    const d = document.createElement('div');
+    d.className = 'crow';
+    d.innerHTML = '<input type="text" maxlength="30" placeholder="姓名" aria-label="同行親友姓名"><input type="tel" maxlength="15" placeholder="電話（選填）" aria-label="同行親友電話">' +
+      '<label class="ck"><input type="checkbox"> 素</label><button type="button" class="btn ghost small" data-crm title="移除">✕</button>';
+    const ins = d.querySelectorAll('input');
+    if (c) { ins[0].value = c.name || ''; ins[1].value = c.phone || ''; ins[2].checked = !!c.veg; }
+    $('#ed-comps').appendChild(d);
+    return d;
+  }
+  function syncEditor() {
+    $('#ed-attend-box').style.display = $('#ed-attend').value === 'yes' ? 'grid' : 'none';
+    $('#ed-addr-box').hidden = !$('#ed-paper').checked;
+  }
+  function openEditor(id) {
+    editingId = id || null;
+    const g = id ? guests.find(x => x.id === id) : null;
+    $('#ed-title').textContent = g ? '編輯賓客：' + g.name : '新增賓客';
+    $('#ed-name').value = g ? g.name : '';
+    $('#ed-phone').value = g ? g.phone : '';
+    $('#ed-side').value = g ? g.side : (role === '新郎' ? '男方親友' : role === '新娘' ? '女方親友' : '');
+    $('#ed-rel').value = g ? g.relation || '' : '';
+    $('#ed-attend').value = !g || g.attend ? 'yes' : 'no';
+    $('#ed-selfveg').checked = !!(g && g.selfveg);
+    $('#ed-comps').innerHTML = '';
+    (g ? g.companions : []).forEach(compRow);
+    $('#ed-kids').value = g ? num(g.kids) : 0;
+    $('#ed-paper').checked = !!(g && g.paper);
+    $('#ed-address').value = g ? g.address : '';
+    $('#ed-message').value = g ? g.message : '';
+    $('#ed-err').textContent = '';
+    syncEditor();
+    $('#modal').hidden = false;
+    $('#ed-name').focus();
+  }
+  $('#add').addEventListener('click', () => openEditor(null));
+  $('#ed-cancel').addEventListener('click', () => { $('#modal').hidden = true; });
+  $('#modal').addEventListener('click', e => { if (e.target === $('#modal')) $('#modal').hidden = true; });
+  $('#editor').addEventListener('change', syncEditor);
+  $('#ed-comp-add').addEventListener('click', () => { if ($('#ed-comps').children.length < 9) compRow().querySelector('input').focus(); });
+  $('#ed-comps').addEventListener('click', e => { if (e.target.dataset.crm !== undefined) e.target.closest('.crow').remove(); });
+  $('#editor').addEventListener('submit', async e => {
+    e.preventDefault();
+    const guest = {
+      name: $('#ed-name').value.trim(), phone: $('#ed-phone').value.trim(), side: $('#ed-side').value, relation: $('#ed-rel').value.trim(),
+      attend: $('#ed-attend').value, selfveg: $('#ed-selfveg').checked,
+      companions: Array.from($('#ed-comps').children).map(r => { const i = r.querySelectorAll('input'); return { name: i[0].value.trim(), phone: i[1].value.trim(), veg: i[2].checked }; }),
+      kids: num($('#ed-kids').value), paper: $('#ed-paper').checked, address: $('#ed-address').value.trim(), message: $('#ed-message').value.trim(),
+    };
+    $('#ed-save').disabled = true;
+    $('#ed-err').textContent = '';
+    try {
+      await call('admin_save', { id: editingId, guest });
+      $('#modal').hidden = true;
+      await load();
+      toast(editingId ? '已儲存' : '已新增');
+    } catch (err) {
+      $('#ed-err').textContent = err.message;
+    } finally {
+      $('#ed-save').disabled = false;
+    }
+  });
+
+  // ---------- 權限管理（只有新郎） ----------
+  async function loadUsers() {
+    try { users = (await call('admin_users')).users; renderUsers(); } catch (err) { toast(err.message); }
+  }
+  function renderUsers() {
+    $('#urows').innerHTML = users.length ? users.map(u => `<tr data-uid="${esc(u.uid)}">
+      <td><b>${esc(u.name)}</b></td>
+      <td>${esc(u.role)}</td>
+      <td><select data-ulevel><option value="edit" ${u.level === 'edit' ? 'selected' : ''}>可編輯</option><option value="view" ${u.level === 'view' ? 'selected' : ''}>只能看</option></select></td>
+      <td><span class="pw">${esc(u.key)}</span> <button class="btn ghost small" data-ucopy>複製</button></td>
+      <td style="font-size:13px">${esc(u.createdAt || '')}</td>
+      <td class="acts"><button class="btn ghost small" data-uregen title="產生新密碼，舊密碼立刻失效">換密碼</button> <button class="btn ghost small" data-urevoke>收回權限</button></td>
+    </tr>`).join('') : '<tr><td colspan="6" class="empty">還沒有發放任何權限。上面選身分、填稱呼後按「發放」。</td></tr>';
+  }
+  document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+    $('#u-role').value = b.dataset.preset;
+    $('#u-level').value = b.dataset.preset === '媒人婆' ? 'view' : 'edit';
+    $('#u-name').focus();
+  }));
+  async function saveUser(user, okMsg) {
+    try { users = (await call('admin_user_save', { user })).users; renderUsers(); toast(okMsg); return true; }
+    catch (err) { toast(err.message); renderUsers(); return false; }
+  }
+  $('#u-add').addEventListener('click', async () => {
+    const user = { name: $('#u-name').value.trim(), role: $('#u-role').value.trim(), level: $('#u-level').value };
+    if (await saveUser(user, '已發放，把密碼傳給本人就能登入')) { $('#u-name').value = ''; $('#u-role').value = ''; }
+  });
+  $('#urows').addEventListener('change', e => {
+    if (e.target.dataset.ulevel === undefined) return;
+    const u = users.find(x => x.uid === e.target.closest('tr').dataset.uid);
+    saveUser({ uid: u.uid, name: u.name, role: u.role, level: e.target.value }, u.name + ' 的權限已改成「' + (e.target.value === 'edit' ? '可編輯' : '只能看') + '」');
+  });
+  $('#urows').addEventListener('click', async e => {
+    const tr = e.target.closest('tr'); if (!tr) return;
+    const u = users.find(x => x.uid === tr.dataset.uid); if (!u) return;
+    const btn = e.target;
+    if (btn.dataset.ucopy !== undefined) {
+      try { await navigator.clipboard.writeText(u.key); toast('已複製 ' + u.name + ' 的密碼'); }
+      catch (err) { const r = document.createRange(); r.selectNodeContents(tr.querySelector('.pw')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('已選取密碼，請按 Ctrl+C 複製'); }
+      return;
+    }
+    const isRegen = btn.dataset.uregen !== undefined, isRevoke = btn.dataset.urevoke !== undefined;
+    if (!isRegen && !isRevoke) return;
+    if (!btn.classList.contains('confirm-del')) {   // 按兩次才執行
+      const old = btn.textContent;
+      btn.classList.add('confirm-del'); btn.textContent = isRegen ? '確定換？' : '確定收回？';
+      setTimeout(() => { btn.classList.remove('confirm-del'); btn.textContent = old; }, 3000);
+      return;
+    }
+    if (isRegen) return saveUser({ uid: u.uid, name: u.name, role: u.role, level: u.level, regen: true }, u.name + ' 的密碼已更換，舊密碼失效');
+    try { users = (await call('admin_user_delete', { uid: u.uid })).users; renderUsers(); toast('已收回 ' + u.name + ' 的權限'); }
+    catch (err) { toast(err.message); }
+  });
+
+  // ---------- 分頁 ----------
+  document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t === tab));
+    document.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.tab; });
+  }));
+
+  // ---------- 匯出（Excel 可直接開） ----------
+  function download(name, head, rows) {
+    const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const csv = '﻿' + [head.map(q).join(',')].concat(rows.map(r => r.map(q).join(','))).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  $('#csv').addEventListener('click', () => download('婚宴賓客名單.csv',
+    ['姓名', '手機', '男方／女方', '關係', '出席', '人數', '葷食', '素食', '本人吃素', '同行親友', '兒童椅', '桌次', '紙本喜帖', '地址', '祝福', '最後更新', '最後修改者'],
+    guests.map(g => [g.name, '\t' + g.phone, g.side, g.relation, g.attend ? '出席' : '不克出席', count(g), count(g) - vegN(g), vegN(g), g.selfveg ? '是' : '',
+      g.companions.map(c => c.name + (c.phone ? ' ' + c.phone : '') + (c.veg ? '（素）' : '')).join('、'), g.kids,
+      Array.from(new Set(persons(g).map(p => p.table).filter(Boolean))).map(label).join('、'), g.paper ? '要' : '不用', g.address, g.message, g.updatedAt, g.editedBy])));
+  $('#csv-seat').addEventListener('click', () => {
+    const order = tables.map(t => t.no);
+    const ps = allPersons().sort((a, b) => (a.table ? order.indexOf(a.table) : 999) - (b.table ? order.indexOf(b.table) : 999));
+    download('婚宴座位表.csv', ['桌次', '姓名', '吃素', '男方／女方', '關係', '跟誰一起來', '主賓手機'],
+      ps.map(p => [p.table ? label(p.table) : '未排', p.name, p.veg ? '素' : '', p.g.side, p.g.relation, p.of || '', '\t' + p.g.phone]));
+  });
+
+  if (KEY) load().catch(() => { KEY = ''; });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+tools/mock-data.json
+.claude/
+__pycache__/
+work/
