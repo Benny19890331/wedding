@@ -400,7 +400,8 @@
       thanks.hidden = false;
       thanks.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (err) {
-      showError((err && err.message) || '網路好像不太穩，請再試一次');
+      const net = !err || err instanceof TypeError || err instanceof SyntaxError;   // 連線失敗或回應不是資料
+      showError(net ? '連不到伺服器，回覆沒有送出。請確認網路正常，若有開啟廣告阻擋或隱私保護外掛，請先關閉再試一次。' : err.message);
     } finally {
       btn.disabled = false;
       btn.textContent = '送出回覆';
