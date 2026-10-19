@@ -311,7 +311,7 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="config.js?v=10192201"></script>
+<script src="config.js?v=10192220"></script>
 <script>
 (function () {
   'use strict';
@@ -345,12 +345,19 @@
 
   async function call(action, extra) {
     if (!API) throw new Error('尚未設定 API_URL（config.js）');
-    let out;
+    let out, text = '';
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 45000);      // 最多等 45 秒，不要讓畫面一直卡著
     try {
-      const res = await fetch(API, { method: 'POST', body: JSON.stringify(Object.assign({ action, key: KEY }, extra || {})) });
-      out = await res.json();
-    } catch (err) {                        // 網路斷線、被外掛擋掉，或伺服器回了不是資料的網頁
+      const res = await fetch(API, { method: 'POST', body: JSON.stringify(Object.assign({ action, key: KEY }, extra || {})), signal: ctl.signal });
+      text = await res.text();
+      out = JSON.parse(text);
+    } catch (err) {
+      if (err.name === 'AbortError') throw new Error('伺服器超過 45 秒沒有回應。請到 Apps Script 左側的「執行項目」查看最新一筆 doPost 的狀態和錯誤訊息。');
+      if (text) throw new Error('伺服器回傳的不是資料（可能是後端程式出錯）。開頭內容：' + text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120));
       throw new Error('連不到伺服器。請確認網路正常，若有開啟廣告阻擋或隱私保護外掛，請先關閉再試一次。');
+    } finally {
+      clearTimeout(timer);
     }
     if (!out.ok) throw new Error(out.error || '操作失敗');
     return out;
@@ -362,6 +369,8 @@
     KEY = $('#key').value;
     $('#login-btn').disabled = true;
     $('#login-err').textContent = '';
+    const t0 = Date.now();
+    const tick = setInterval(() => { $('#login-btn').textContent = '登入中…（' + Math.round((Date.now() - t0) / 1000) + ' 秒）'; }, 500);
     try {
       await load();
       try {
@@ -371,6 +380,8 @@
     } catch (err) {
       $('#login-err').textContent = err.message;
     } finally {
+      clearInterval(tick);
+      $('#login-btn').textContent = '登入';
       $('#login-btn').disabled = false;
     }
   });
