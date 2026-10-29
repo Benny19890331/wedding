@@ -75,7 +75,6 @@
   .tcard { background: var(--paper); border-radius: 14px; padding: 14px; box-shadow: 0 0 0 1px rgba(201,164,92,.3); min-height: 120px; }
   .tcard.over { box-shadow: 0 0 0 2px var(--red); }
   .tcard.drop, .pool.drop { box-shadow: 0 0 0 3px var(--gold); background: #fffaf0; }
-  .tcard.vegt { background: #f3f8ef; }
   .bar { height: 6px; background: var(--latte); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
   .bar i { display: block; height: 100%; background: var(--gold); }
   .tcard.over .bar i { background: var(--red); }
@@ -191,7 +190,7 @@
 
     <!-- 桌次設定 -->
     <section data-panel="tables" hidden>
-      <p class="hint">預設 12 桌：主桌 12 人、第 1–10 桌各 10 人、素食桌 10 人。可以改桌名、座位數，或新增、刪除桌子，改完按「儲存桌次」。</p>
+      <p class="hint">預設 12 桌：主桌 12 人、第 1–11 桌各 10 人。吃素的賓客和大家同桌，每桌卡片上會顯示要準備幾份素食套餐。可以改桌名、座位數，或新增、刪除桌子，改完按「儲存桌次」。</p>
       <div class="card">
         <div class="tset" id="tset"></div>
         <div class="toolbar" style="margin-top:12px">
@@ -427,7 +426,7 @@
       ['出席人數', ps.length, 'red'],
       ['不克出席', guests.length - yes.length + ' 筆'],
       ['男方／女方／共同', by('男方親友') + '／' + by('女方親友') + '／' + by('共同朋友')],
-      ['葷／素', (ps.length - ps.filter(p => p.veg).length) + '／' + ps.filter(p => p.veg).length],
+      ['葷食／素食套餐', (ps.length - ps.filter(p => p.veg).length) + '／' + ps.filter(p => p.veg).length],
       ['兒童椅', yes.reduce((a, g) => a + num(g.kids), 0)],
       ['紙本喜帖', guests.filter(g => g.paper).length + ' 份'],
       ['已排桌', ps.filter(p => p.table).length + '／' + ps.length],
@@ -548,10 +547,9 @@
 
   // ---------- 排桌（一人一位） ----------
   const pid = p => p.g.id + '|' + p.idx;
-  function chip(p, vegTable) {
-    const warn = p.veg && p.table && !vegTable ? '' : (!p.veg && vegTable ? ' <span class="warn" title="這位沒有勾吃素">非素食</span>' : '');
+  function chip(p) {
     return `<div class="person ${sideCls(p.g.side)} ${selected === pid(p) ? 'sel' : ''}" draggable="${canEdit()}" data-pid="${esc(pid(p))}">
-      <span>${esc(p.name)}${p.veg ? ' <span class="tag veg">素</span>' : ''}${warn}${p.of ? ` <small>${esc(p.of)}的同行</small>` : (p.g.relation ? ` <small>${esc(p.g.relation)}</small>` : '')}</span>
+      <span>${esc(p.name)}${p.veg ? ' <span class="tag veg">素</span>' : ''}${p.of ? ` <small>${esc(p.of)}的同行</small>` : (p.g.relation ? ` <small>${esc(p.g.relation)}</small>` : '')}</span>
       ${p.table ? `<button title="移出" data-unseat="${esc(pid(p))}">✕</button>` : ''}
     </div>`;
   }
@@ -561,16 +559,16 @@
     const known = new Set(tables.map(t => t.no));
     const pool = ps.filter(p => !p.table || !known.has(p.table));
     $('#pool').innerHTML = `<h3>尚未排桌 <span class="seat-count">${pool.length} 人${pool.filter(p => p.veg).length ? '（素 ' + pool.filter(p => p.veg).length + '）' : ''}</span></h3>` +
-      (pool.length ? pool.map(p => chip(p, false)).join('') : '<div class="empty">全部排好了 🎉</div>');
+      (pool.length ? pool.map(chip).join('') : '<div class="empty">全部排好了 🎉</div>');
     $('#tables').innerHTML = tables.map(t => {
       const inT = ps.filter(p => p.table === t.no);
       const cap = num(t.cap), used = inT.length;
-      const vegT = /素/.test(t.no + t.note);
-      return `<div class="tcard ${used > cap ? 'over' : ''} ${vegT ? 'vegt' : ''}" data-table="${esc(t.no)}">
-        <h3>${esc(label(t.no))} <span class="seat-count">${used}／${cap} 位</span></h3>
+      const veg = inT.filter(p => p.veg).length;
+      return `<div class="tcard ${used > cap ? 'over' : ''}" data-table="${esc(t.no)}">
+        <h3>${esc(label(t.no))} <span class="seat-count">${used}／${cap} 位${veg ? ` <span class="tag veg">素食套餐 ${veg}</span>` : ''}</span></h3>
         <div class="bar"><i style="width:${cap ? Math.min(100, used / cap * 100) : 0}%"></i></div>
         ${t.note ? `<p class="hint" style="margin:0 0 6px">${esc(t.note)}</p>` : ''}
-        ${inT.length ? inT.map(p => chip(p, vegT)).join('') : '<div class="empty">把人拖到這裡</div>'}
+        ${inT.length ? inT.map(chip).join('') : '<div class="empty">把人拖到這裡</div>'}
       </div>`;
     }).join('');
   }
@@ -890,8 +888,8 @@
   $('#csv-seat').addEventListener('click', () => {
     const order = tables.map(t => t.no);
     const ps = allPersons().sort((a, b) => (a.table ? order.indexOf(a.table) : 999) - (b.table ? order.indexOf(b.table) : 999));
-    download('婚宴座位表.csv', ['桌次', '姓名', '吃素', '男方／女方', '關係', '跟誰一起來', '主賓手機'],
-      ps.map(p => [p.table ? label(p.table) : '未排', p.name, p.veg ? '素' : '', p.g.side, p.g.relation, p.of || '', '\t' + p.g.phone]));
+    download('婚宴座位表.csv', ['桌次', '姓名', '素食套餐', '男方／女方', '關係', '跟誰一起來', '主賓手機'],
+      ps.map(p => [p.table ? label(p.table) : '未排', p.name, p.veg ? '素食套餐' : '', p.g.side, p.g.relation, p.of || '', '\t' + p.g.phone]));
   });
 
   // 之前登入過就直接進後台；如果密碼已經被換掉或權限被收回，清掉記住的密碼、回到登入畫面

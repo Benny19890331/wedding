@@ -16,8 +16,7 @@ const LEVELS = ['edit', 'view'];
 const SIDES = ['男方親友', '女方親友', '共同朋友'];
 
 const DEFAULT_TABLES = [{ no: '主桌', cap: 12, note: '' }]
-  .concat(Array.from({ length: 10 }, (_, i) => ({ no: String(i + 1), cap: 10, note: '' })))
-  .concat([{ no: '素食桌', cap: 10, note: '全素' }]);
+  .concat(Array.from({ length: 11 }, (_, i) => ({ no: String(i + 1), cap: 10, note: '' })));
 
 function load() {
   try { const d = JSON.parse(fs.readFileSync(DATA, 'utf8')); d.users = d.users || []; return d; } catch { return { guests: [], tables: DEFAULT_TABLES, users: [] }; }
