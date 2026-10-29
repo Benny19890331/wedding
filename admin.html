@@ -192,6 +192,10 @@
     <section data-panel="tables" hidden>
       <p class="hint">預設 12 桌：主桌 12 人、第 1–11 桌各 10 人。吃素的賓客和大家同桌，每桌卡片上會顯示要準備幾份素食套餐。可以改桌名、座位數，或新增、刪除桌子，改完按「儲存桌次」。</p>
       <div class="card">
+        <div id="veg-fix" class="hint" hidden style="background:#fff7e6;border:1px solid #e8cf9a;border-radius:10px;padding:10px 12px">
+          現在改成吃素的賓客上素食套餐，不用另外開素食桌了。
+          <button class="btn small" id="veg-fix-btn" type="button">把「素食桌」改成第 11 桌</button>
+        </div>
         <div class="tset" id="tset"></div>
         <div class="toolbar" style="margin-top:12px">
           <button class="btn ghost small" id="t-add">＋ 新增一桌</button>
@@ -392,7 +396,7 @@
 
   async function load() {
     const out = await call('admin_list');
-    guests = out.guests; tables = out.tables; me = out.me || me; role = me.role;
+    guests = out.guests; tables = out.tables; markOrig(); me = out.me || me; role = me.role;
     $('#who').textContent = me.name + '（' + me.role + '）';
     $('#app').classList.toggle('readonly', !canEdit());
     $('#ro-note').hidden = canEdit();
@@ -614,6 +618,7 @@
 
   // ---------- 桌次設定 ----------
   function renderTableSettings() {
+    $('#veg-fix').hidden = !canEdit() || !tables.some(t => t.no === '素食桌');
     $('#tset').innerHTML = '<div class="tset-row" style="font-size:13px;color:var(--muted)"><span>桌號／桌名</span><span>座位數</span><span>備註</span><span></span></div>' +
       tables.map((t, i) => `<div class="tset-row" data-i="${i}">
         <input data-k="no" value="${esc(t.no)}" maxlength="20" ${canEdit() ? '' : 'disabled'}>
@@ -641,10 +646,31 @@
     if (new Set(names).size !== names.length) return toast('桌號不能重複');
     $('#t-save').disabled = true;
     try {
-      const out = await call('admin_tables', { tables });
-      tables = out.tables; render(); toast('桌次已儲存');
+      // 改了桌名的話，原本坐在那桌的人跟著搬過去，不會掉回「尚未排桌」
+      const renamed = tables.filter(t => t.orig && t.orig !== String(t.no).trim());
+      const out = await call('admin_tables', { tables: tables.map(t => ({ no: t.no, cap: t.cap, note: t.note })) });
+      let moved = 0;
+      for (const t of renamed) {
+        const to = String(t.no).trim();
+        for (const g of guests) {
+          const n = persons(g).length, at = (g.seats || []).map((x, i) => x === t.orig ? i : -1).filter(i => i >= 0);
+          if (!at.length) continue;
+          if (at.length === n) await call('admin_assign', { id: g.id, idx: 'all', table: to });
+          else for (const i of at) await call('admin_assign', { id: g.id, idx: i, table: to });
+          at.forEach(i => { g.seats[i] = to; }); moved += at.length;
+        }
+      }
+      tables = out.tables; markOrig(); render(); toast('桌次已儲存' + (moved ? `，${moved} 位已跟著換到新桌名` : ''));
     } catch (err) { toast(err.message); }
     finally { $('#t-save').disabled = false; }
+  });
+  function markOrig() { tables.forEach(t => { t.orig = t.no; }); }
+  $('#veg-fix-btn').addEventListener('click', () => {
+    if (tables.some(t => t.no === '11')) return toast('已經有第 11 桌了，請在下面手動調整桌名');
+    const t = tables.find(x => x.no === '素食桌');
+    if (!t) return;
+    t.no = '11'; t.note = '';
+    renderTableSettings(); $('#t-save').click();
   });
 
   // ---------- 新增／編輯賓客 ----------
