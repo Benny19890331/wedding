@@ -405,6 +405,8 @@
     $('#login').hidden = true;
     $('#app').hidden = false;
     render();
+    // 已經不開素食桌了（吃素的人改上素食套餐），舊資料裡的「素食桌」自動改成第 11 桌
+    if (canEdit() && tables.some(t => t.no === '素食桌') && !tables.some(t => t.no === '11')) vegFix();
   }
 
   // ---------- 疑似重複：同名但是不同筆 ----------
@@ -665,13 +667,14 @@
     finally { $('#t-save').disabled = false; }
   });
   function markOrig() { tables.forEach(t => { t.orig = t.no; }); }
-  $('#veg-fix-btn').addEventListener('click', () => {
+  $('#veg-fix-btn').addEventListener('click', vegFix);
+  function vegFix() {
     if (tables.some(t => t.no === '11')) return toast('已經有第 11 桌了，請在下面手動調整桌名');
     const t = tables.find(x => x.no === '素食桌');
     if (!t) return;
     t.no = '11'; t.note = '';
     renderTableSettings(); $('#t-save').click();
-  });
+  }
 
   // ---------- 新增／編輯賓客 ----------
   function compRow(c) {
