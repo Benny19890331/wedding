@@ -116,7 +116,7 @@
   .urow input, .urow select, #urows select { padding: 7px 10px; border: 1.5px solid var(--latte); border-radius: 10px; background: #fff; width: 100%; }
   .pw { font-family: ui-monospace, Consolas, monospace; letter-spacing: .06em; user-select: all; }
   /* 只能看的人：把會修改資料的按鈕都收起來 */
-  .readonly #add, .readonly #bulk, .readonly [data-edit], .readonly [data-del], .readonly [data-unseat], .readonly #t-add, .readonly #t-save, .readonly [data-rm] { display: none !important; }
+  .readonly #add, .readonly #bulk, .readonly #imp-seat, .readonly [data-edit], .readonly [data-del], .readonly [data-unseat], .readonly #t-add, .readonly #t-save, .readonly [data-rm] { display: none !important; }
   .readonly .person { cursor: default; }
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 30; }
   .toast.show { opacity: 1; }
@@ -142,6 +142,8 @@
         <button class="btn small" id="bulk">＋ 批次新增</button>
         <button class="btn ghost small" id="csv">匯出名單</button>
         <button class="btn ghost small" id="csv-seat">匯出座位表</button>
+        <button class="btn ghost small" id="imp-seat">匯入座位表</button>
+        <input type="file" id="imp-file" accept=".csv,text/csv" hidden>
         <button class="btn ghost small" id="refresh">重新整理</button>
         <button class="btn ghost small" id="pw">修改我的密碼</button>
         <button class="btn ghost small" id="logout">登出</button>
@@ -190,7 +192,7 @@
 
     <!-- 桌次設定 -->
     <section data-panel="tables" hidden>
-      <p class="hint">預設 12 桌：主桌 12 人、第 1–11 桌各 10 人。吃素的賓客和大家同桌，每桌卡片上會顯示要準備幾份素食套餐。可以改桌名、座位數，或新增、刪除桌子，改完按「儲存桌次」。</p>
+      <p class="hint">預設 12 桌：主桌 12 人、第 1–12 桌各 10 人（照飯店場圖避開 4，沒有第 4 桌）。吃素的賓客和大家同桌，每桌卡片上會顯示要準備幾份素食套餐。可以改桌名、座位數，或新增、刪除桌子，改完按「儲存桌次」。</p>
       <div class="card">
         <div id="veg-fix" class="hint" hidden style="background:#fff7e6;border:1px solid #e8cf9a;border-radius:10px;padding:10px 12px">
           現在改成吃素的賓客上素食套餐，不用另外開素食桌了。
@@ -286,6 +288,19 @@
       <button class="btn" type="submit" id="pw-save">儲存新密碼</button>
     </div>
   </form>
+</div>
+
+<!-- 匯入座位表：把「匯出座位表」的 CSV 在 Excel 裡改好桌次再匯入，一次排好全部的人 -->
+<div class="modal" id="imp-modal" hidden>
+  <div class="sheet">
+    <h2>匯入座位表</h2>
+    <div id="imp-body"></div>
+    <p class="err" id="imp-err" style="white-space:pre-line"></p>
+    <div class="sheet-acts">
+      <button class="btn ghost" type="button" id="imp-cancel">取消</button>
+      <button class="btn" type="button" id="imp-go">確定匯入</button>
+    </div>
+  </div>
 </div>
 
 <!-- 批次新增：一次貼上很多位（給不會用電子喜帖的長輩） -->
@@ -639,7 +654,9 @@
   });
   $('#t-add').addEventListener('click', () => {
     const nums = tables.map(t => num(t.no)).filter(Boolean);
-    tables.push({ no: String((nums.length ? Math.max.apply(null, nums) : 0) + 1), cap: 10, note: '' });
+    let n = (nums.length ? Math.max.apply(null, nums) : 0) + 1;
+    while (/4/.test(String(n))) n++;             // 跟飯店一樣避開 4
+    tables.push({ no: String(n), cap: 10, note: '' });
     renderTableSettings();
   });
   $('#t-save').addEventListener('click', async () => {
@@ -919,6 +936,114 @@
     const ps = allPersons().sort((a, b) => (a.table ? order.indexOf(a.table) : 999) - (b.table ? order.indexOf(b.table) : 999));
     download('婚宴座位表.csv', ['桌次', '姓名', '素食套餐', '男方／女方', '關係', '跟誰一起來', '主賓手機'],
       ps.map(p => [p.table ? label(p.table) : '未排', p.name, p.veg ? '素食套餐' : '', p.g.side, p.g.relation, p.of || '', '\t' + p.g.phone]));
+  });
+
+  // ---------- 匯入座位表 ----------
+  function parseCsv(text) {
+    const rows = [[]]; let f = '', q = false;
+    text = text.replace(/^﻿/, '');
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { rows[rows.length - 1].push(f); f = ''; }
+      else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; rows[rows.length - 1].push(f); f = ''; rows.push([]); }
+      else f += c;
+    }
+    rows[rows.length - 1].push(f);
+    return rows.filter(r => r.some(x => x.trim()));
+  }
+  const digits = s => String(s || '').replace(/\D/g, '').replace(/^886/, '0');
+
+  /** 把 CSV 的每一列對到後台裡的人：本人用「姓名＋手機」找到那筆回覆，同行親友用「跟誰一起來」找到主賓再比對姓名 */
+  function planImport(rows) {
+    const h = rows[0].map(x => x.trim());
+    const iT = h.indexOf('桌次'), iN = h.indexOf('姓名'), iOf = h.indexOf('跟誰一起來'), iP = h.indexOf('主賓手機');
+    if (iT < 0 || iN < 0) throw new Error('找不到「桌次」和「姓名」欄位，請用「匯出座位表」的檔案來改');
+    const lines = rows.slice(1).map((r, k) => ({
+      line: k + 2, table: (r[iT] || '').trim(), name: normName(r[iN]),
+      of: iOf < 0 ? '' : normName(r[iOf]), phone: iP < 0 ? '' : digits(r[iP]),
+    })).filter(r => r.name);
+    const order = [];                              // 桌次照檔案裡出現的順序
+    lines.forEach(r => { if (r.table && r.table !== '未排' && !order.includes(r.table)) order.push(r.table); });
+
+    const seats = new Map(), used = new Set(), miss = [];
+    const blank = g => { if (!seats.has(g.id)) seats.set(g.id, persons(g).map(() => '')); return seats.get(g.id); };
+    lines.forEach(r => {
+      const table = r.table === '未排' ? '' : r.table;
+      const owner = r.of || r.name;
+      const cands = guests.filter(g => g.attend && normName(g.name) === owner && (!r.phone || digits(g.phone) === r.phone));
+      for (const g of cands) {
+        const ps = persons(g);
+        let p = r.of ? ps.find(x => x.idx > 0 && normName(x.name) === r.name && !used.has(pid(x)))
+                     : (used.has(pid(ps[0])) ? null : ps[0]);
+        if (!p && r.of) p = ps.find(x => x.idx > 0 && !used.has(pid(x)));   // 同行親友改過名字時，排進還沒對到的位子
+        if (p) { used.add(pid(p)); blank(g)[p.idx] = table; return; }
+      }
+      miss.push(r);
+    });
+    // 後台有、檔案裡沒有的人：清掉座位，回到「尚未排桌」
+    const left = allPersons().filter(p => !used.has(pid(p)));
+    left.forEach(p => blank(p.g));
+
+    const old = new Map(tables.map(t => [t.no, t]));
+    const newTables = order.map(no => ({ no, cap: old.has(no) ? num(old.get(no).cap) : (/主桌/.test(no) ? 12 : 10), note: old.has(no) ? old.get(no).note : '' }));
+    return { newTables, seats, miss, left, total: lines.length };
+  }
+
+  let impPlan = null;
+  $('#imp-seat').addEventListener('click', () => { $('#imp-file').value = ''; $('#imp-file').click(); });
+  $('#imp-file').addEventListener('change', async () => {
+    const f = $('#imp-file').files[0]; if (!f) return;
+    $('#imp-err').textContent = '';
+    try {
+      const buf = await f.arrayBuffer();
+      let text = new TextDecoder('utf-8').decode(buf);
+      if (text.includes('�')) text = new TextDecoder('big5').decode(buf);   // Excel 另存的 CSV 有時是 Big5
+      impPlan = planImport(parseCsv(text));
+    } catch (err) { return toast(err.message); }
+    const p = impPlan;
+    const cnt = no => {
+      let n = 0, v = 0;
+      p.seats.forEach((s, id) => { const ps = persons(guests.find(x => x.id === id)); s.forEach((t, i) => { if (t === no) { n++; if (ps[i].veg) v++; } }); });
+      return [n, v];
+    };
+    $('#imp-body').innerHTML = `
+      <p class="hint" style="margin:0 0 8px">檔案裡 ${p.total} 位，對到 ${p.total - p.miss.length} 位。按「確定匯入」後，桌次會換成下面這 ${p.newTables.length} 桌，每個人照檔案排好。</p>
+      <div class="imp-tables">${p.newTables.map(t => { const [n, v] = cnt(t.no); return `<div><b>${esc(label(t.no))}</b>　${n}／${t.cap} 位${v ? ` <span class="tag veg">素食套餐 ${v}</span>` : ''}${n > t.cap ? ' <span class="warn">超過座位數</span>' : ''}</div>`; }).join('')}</div>
+      ${p.miss.length ? `<p class="err" style="margin:10px 0 4px">這 ${p.miss.length} 位在後台找不到，不會排進去（可能是名字或手機跟後台不一樣）：</p><p class="hint" style="margin:0">${p.miss.map(r => `第 ${r.line} 列 ${esc(r.name)}${r.of ? '（' + esc(r.of) + '的同行）' : ''}`).join('、')}</p>` : ''}
+      ${p.left.length ? `<p class="err" style="margin:10px 0 4px">這 ${p.left.length} 位在後台有、但檔案裡沒有，匯入後會變成「尚未排桌」：</p><p class="hint" style="margin:0">${p.left.map(q => esc(q.name) + (q.of ? '（' + esc(q.of) + '的同行）' : '')).join('、')}</p>` : ''}
+      ${!p.miss.length && !p.left.length ? '<p class="hint" style="margin:10px 0 0">全部的人都對上了 👍</p>' : ''}`;
+    $('#imp-modal').hidden = false;
+  });
+  $('#imp-cancel').addEventListener('click', () => { $('#imp-modal').hidden = true; });
+  $('#imp-go').addEventListener('click', async () => {
+    const p = impPlan; if (!p) return;
+    const btn = $('#imp-go'); btn.disabled = true; $('#imp-err').textContent = '';
+    try {
+      btn.textContent = '儲存桌次中…';
+      await call('admin_tables', { tables: p.newTables });
+      const list = Array.from(p.seats, ([id, s]) => ({ id, seats: s }))
+        .filter(x => JSON.stringify(persons(guests.find(g => g.id === x.id)).map(q => q.table)) !== JSON.stringify(x.seats));
+      try {
+        btn.textContent = '排桌中…';
+        if (list.length) await call('admin_seats', { list });
+      } catch (err) {
+        if (!/未知的動作/.test(err.message)) throw err;
+        // 後端還是舊版（沒有一次排很多人的功能）：一筆一筆排，比較慢但結果一樣
+        let k = 0;
+        for (const x of list) {
+          btn.textContent = `排桌中 ${++k}／${list.length}`;
+          if (new Set(x.seats).size === 1) await call('admin_assign', { id: x.id, idx: 'all', table: x.seats[0] });
+          else for (let i = 0; i < x.seats.length; i++) await call('admin_assign', { id: x.id, idx: i, table: x.seats[i] });
+        }
+      }
+      $('#imp-modal').hidden = true;
+      await load();
+      toast('座位表已匯入');
+    } catch (err) {
+      $('#imp-err').textContent = '匯入到一半失敗：' + err.message + '\n可以再匯入一次，已經排好的不會重複。';
+    } finally { btn.disabled = false; btn.textContent = '確定匯入'; }
   });
 
   // 之前登入過就直接進後台；如果密碼已經被換掉或權限被收回，清掉記住的密碼、回到登入畫面

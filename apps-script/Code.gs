@@ -23,13 +23,13 @@ const SIDES = ['男方親友', '女方親友', '共同朋友'];
 const OWNER = { name: '蕭苰栯', role: '新郎' };
 const LEVELS = ['edit', 'view'];   // 可編輯／只能看
 
-// 共 12 桌：主桌 12 人、第 1–11 桌各 10 人（吃素的賓客上素食套餐，不另外開素食桌）
+// 共 12 桌：主桌 12 人、第 1–12 桌各 10 人（照飯店場圖避開 4，沒有第 4 桌；吃素的賓客上素食套餐，不另外開素食桌）
 const DEFAULT_TABLES = [
   { no: '主桌', cap: 12, note: '' },
   { no: '1', cap: 10, note: '' }, { no: '2', cap: 10, note: '' }, { no: '3', cap: 10, note: '' },
-  { no: '4', cap: 10, note: '' }, { no: '5', cap: 10, note: '' }, { no: '6', cap: 10, note: '' },
-  { no: '7', cap: 10, note: '' }, { no: '8', cap: 10, note: '' }, { no: '9', cap: 10, note: '' },
-  { no: '10', cap: 10, note: '' }, { no: '11', cap: 10, note: '' },
+  { no: '5', cap: 10, note: '' }, { no: '6', cap: 10, note: '' }, { no: '7', cap: 10, note: '' },
+  { no: '8', cap: 10, note: '' }, { no: '9', cap: 10, note: '' }, { no: '10', cap: 10, note: '' },
+  { no: '11', cap: 10, note: '' }, { no: '12', cap: 10, note: '' },
 ];
 
 /** 第一次部署前，在編輯器選 setup 按「執行」一次 */
@@ -87,6 +87,7 @@ function doPost(e) {
       case 'admin_list': return json(adminList(me));
       case 'admin_save': edit(); return json(adminSave(body.id, body.guest || {}, me.stamp));
       case 'admin_assign': edit(); return json(adminAssign(body.id, body.idx, body.table, me.stamp));
+      case 'admin_seats': edit(); return json(adminSeats(body.list, me.stamp));
       case 'admin_delete': edit(); return json(adminDelete(body.id));
       case 'admin_tables': edit(); return json(adminSaveTables(body.tables));
       case 'admin_set_key': return json(setMyKey(me, body.newKey));
@@ -332,6 +333,31 @@ function adminAssign(id, idx, table, role) {
     g.editedBy = role + ' ' + now();
     writeGuest(sh, g._row, g);
     return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** 一次排很多人（匯入座位表用）：list = [{ id, seats: ['桌名', ...] }]，seats 依序是本人、同行親友 1、2… */
+function adminSeats(list, role) {
+  if (!Array.isArray(list) || list.length > 500) throw new Error('座位資料錯誤');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = sheet(SHEET_GUESTS);
+    const byId = {};
+    readGuests(sh).forEach(g => { byId[g.id] = g; });
+    let n = 0;
+    list.forEach(x => {
+      const g = byId[x && x.id];
+      if (!g || !g.attend) return;
+      const seats = Array.isArray(x.seats) ? x.seats : [];
+      g.seats = Array.from({ length: 1 + g.companions.length }, (_, i) => clean(seats[i], 20));
+      g.editedBy = role + ' ' + now();
+      writeGuest(sh, g._row, g);
+      n++;
+    });
+    return { ok: true, updated: n };
   } finally {
     lock.releaseLock();
   }

@@ -16,7 +16,7 @@ const LEVELS = ['edit', 'view'];
 const SIDES = ['男方親友', '女方親友', '共同朋友'];
 
 const DEFAULT_TABLES = [{ no: '主桌', cap: 12, note: '' }]
-  .concat(Array.from({ length: 11 }, (_, i) => ({ no: String(i + 1), cap: 10, note: '' })));
+  .concat([1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({ no: String(n), cap: 10, note: '' })));   // 照飯店場圖避開 4
 
 function load() {
   try { const d = JSON.parse(fs.readFileSync(DATA, 'utf8')); d.users = d.users || []; return d; } catch { return { guests: [], tables: DEFAULT_TABLES, users: [] }; }
@@ -101,7 +101,7 @@ function handle(b) {
   const stamp = me.name + '（' + me.role + '） ' + now();
   const edit = () => { if (me.level === 'view') throw new Error('你的權限是「只能看」，不能修改'); };
   const owner = () => { if (me.level !== 'owner') throw new Error('只有新郎可以管理權限'); };
-  if (['admin_save', 'admin_assign', 'admin_delete', 'admin_tables'].includes(b.action)) edit();
+  if (['admin_save', 'admin_assign', 'admin_seats', 'admin_delete', 'admin_tables'].includes(b.action)) edit();
   if (['admin_users', 'admin_user_save', 'admin_user_delete'].includes(b.action)) owner();
   switch (b.action) {
     case 'admin_list': return { ok: true, me, guests: db.guests, tables: db.tables };
@@ -153,6 +153,15 @@ function handle(b) {
       else { const i = int(b.idx); if (i < 0 || i >= n) throw new Error('找不到這個座位'); g.seats[i] = t; }
       g.editedBy = stamp;
       save(db); return { ok: true };
+    }
+    case 'admin_seats': {
+      let n = 0;
+      (b.list || []).forEach(x => {
+        const g = db.guests.find(v => v.id === x.id); if (!g || !g.attend) return;
+        g.seats = Array.from({ length: 1 + g.companions.length }, (_, i) => clean((x.seats || [])[i], 20));
+        g.editedBy = stamp; n++;
+      });
+      save(db); return { ok: true, updated: n };
     }
     case 'admin_delete': {
       const i = db.guests.findIndex(x => x.id === b.id); if (i < 0) throw new Error('找不到這位賓客');
