@@ -55,6 +55,7 @@
   .msg { max-width: 200px; color: var(--muted); font-size: 13px; }
   .tag { display: inline-block; font-size: 12px; padding: 0 7px; border-radius: 999px; margin: 1px 3px 1px 0; white-space: nowrap; }
   .tag.veg { background: #e3efdc; color: var(--green); }
+  .tag.kid { background: #fdebd3; color: #a0611c; }
   .tag.dup { background: #fbe3e3; color: var(--red); }
   .tag.edit { background: var(--latte); color: var(--ink); }
   .tag.yes { background: #f7e7c6; color: #8a6420; }
@@ -89,6 +90,8 @@
   .plan .aisle.h { left: 46.6%; width: 53.4%; top: 76.8%; height: 3.8%; font-size: 11px; }
   .plan .arrow { position: absolute; left: 50%; top: 44%; transform: translateX(-50%); width: 0; height: 0; border: 9px solid transparent; border-bottom: 12px solid #d9c9b0; border-top: 0; }
   .plan .door { position: absolute; font-size: 11px; color: var(--muted); }
+  .plan .gap { position: absolute; right: -2px; width: 4px; background: #fff; }
+  .plan .gap::after { content: ''; position: absolute; right: -6px; top: 0; bottom: 0; border-right: 2px dashed var(--tea); }
   .ptable { position: absolute; width: 19%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: var(--paper);
     border: 2px dashed var(--tea); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
     line-height: 1.15; cursor: pointer; padding: 2px; font-size: clamp(9px, 2.3vw, 12.5px); }
@@ -386,6 +389,8 @@
   const persons = g => !g.attend ? [] : [{ g, idx: 0, name: g.name, veg: g.selfveg, table: g.seats[0] || '' }]
     .concat(g.companions.map((c, i) => ({ g, idx: i + 1, name: c.name, veg: c.veg, table: g.seats[i + 1] || '', of: g.name })));
   const allPersons = () => guests.reduce((a, g) => a.concat(persons(g)), []);
+  /** 某一桌要放幾張兒童椅：兒童椅跟著填表的本人坐的那一桌算 */
+  const kidsAt = no => guests.reduce((a, g) => a + (g.attend && (g.seats[0] || '') === no ? num(g.kids) : 0), 0);
 
   function toast(msg) {
     const t = $('#toast'); t.textContent = msg; t.classList.add('show');
@@ -601,7 +606,7 @@
   const pid = p => p.g.id + '|' + p.idx;
   function chip(p) {
     return `<div class="person ${sideCls(p.g.side)} ${selected === pid(p) ? 'sel' : ''}" draggable="${canEdit()}" data-pid="${esc(pid(p))}">
-      <span>${esc(p.name)}${p.veg ? ' <span class="tag veg">素</span>' : ''}${p.of ? ` <small>${esc(p.of)}的同行</small>` : (p.g.relation ? ` <small>${esc(p.g.relation)}</small>` : '')}</span>
+      <span>${esc(p.name)}${p.veg ? ' <span class="tag veg">素</span>' : ''}${!p.idx && num(p.g.kids) ? ` <span class="tag kid">兒童椅 ${num(p.g.kids)}</span>` : ''}${p.of ? ` <small>${esc(p.of)}的同行</small>` : (p.g.relation ? ` <small>${esc(p.g.relation)}</small>` : '')}</span>
       ${p.table ? `<button title="移出" data-unseat="${esc(pid(p))}">✕</button>` : ''}
     </div>`;
   }
@@ -615,9 +620,9 @@
     $('#tables').innerHTML = tables.map(t => {
       const inT = ps.filter(p => p.table === t.no);
       const cap = num(t.cap), used = inT.length;
-      const veg = inT.filter(p => p.veg).length;
+      const veg = inT.filter(p => p.veg).length, kids = kidsAt(t.no);
       return `<div class="tcard ${used > cap ? 'over' : ''}" data-table="${esc(t.no)}">
-        <h3>${esc(label(t.no))} <span class="seat-count">${used}／${cap} 位${veg ? ` <span class="tag veg">素食套餐 ${veg}</span>` : ''}</span></h3>
+        <h3>${esc(label(t.no))} <span class="seat-count">${used}／${cap} 位${veg ? ` <span class="tag veg">素食套餐 ${veg}</span>` : ''}${kids ? ` <span class="tag kid">兒童椅 ${kids}</span>` : ''}</span></h3>
         <div class="bar"><i style="width:${cap ? Math.min(100, used / cap * 100) : 0}%"></i></div>
         ${t.note ? `<p class="hint" style="margin:0 0 6px">${esc(t.note)}</p>` : ''}
         ${inT.length ? inT.map(chip).join('') : '<div class="empty">把人拖到這裡</div>'}
@@ -636,15 +641,15 @@
       const k = spotOf(t.no), xy = SPOTS[k];
       if (!xy || taken.has(k)) { miss.push(label(t.no)); return ''; }
       taken.add(k);
-      const inT = ps.filter(p => p.table === t.no), cap = num(t.cap), veg = inT.filter(p => p.veg).length;
+      const inT = ps.filter(p => p.table === t.no), cap = num(t.cap), veg = inT.filter(p => p.veg).length, kids = kidsAt(t.no);
       const name = k === 'main' ? t.no : t.no.replace(/0*\d+\s*桌?$/, '') || label(t.no);
       return `<div class="ptable ${k === 'main' ? 'main' : ''} ${inT.length > cap ? 'over' : inT.length === cap ? 'full' : ''}" data-table="${esc(t.no)}"
         style="left:${xy[0]}%;top:${xy[1]}%" title="${esc(label(t.no))}　${inT.length}／${cap} 位">
-        <b>${k === 'main' ? esc(name) : '#' + k}</b>${k === 'main' ? '' : `<small>${esc(name)}</small>`}<small>${inT.length}／${cap}</small>${veg ? `<span class="tag veg">素 ${veg}</span>` : ''}
+        <b>${k === 'main' ? esc(name) : '#' + k}</b>${k === 'main' ? '' : `<small>${esc(name)}</small>`}<small>${inT.length}／${cap}</small>${veg ? `<span class="tag veg">素 ${veg}</span>` : ''}${kids ? `<span class="tag kid">兒童椅 ${kids}</span>` : ''}
       </div>`;
     }).join('');
     $('#plan').innerHTML = '<div class="stage">舞　台</div><div class="arrow"></div><div class="aisle v">走道</div><div class="aisle h">走道</div>' +
-      '<div class="door" style="right:1%;top:81.5%">入口 →</div>' + circles;
+      '<div class="door" style="right:1%;top:81.5%">主要入口 →</div><div class="gap" style="top:32%;height:7%"></div><div class="door" style="right:2%;top:33.6%">側門 →</div><div class="gap" style="top:78%;height:7%"></div>' + circles;
     $('#plan-miss').textContent = miss.length ? '這幾桌在飯店場地圖上找不到位置（桌名裡沒有對應的桌號）：' + miss.join('、') : '';
   }
 
@@ -992,8 +997,8 @@
   $('#csv-seat').addEventListener('click', () => {
     const order = tables.map(t => t.no);
     const ps = allPersons().sort((a, b) => (a.table ? order.indexOf(a.table) : 999) - (b.table ? order.indexOf(b.table) : 999));
-    download('婚宴座位表.csv', ['桌次', '姓名', '素食套餐', '男方／女方', '關係', '跟誰一起來', '主賓手機'],
-      ps.map(p => [p.table ? label(p.table) : '未排', p.name, p.veg ? '素食套餐' : '', p.g.side, p.g.relation, p.of || '', '\t' + p.g.phone]));
+    download('婚宴座位表.csv', ['桌次', '姓名', '素食套餐', '兒童椅', '男方／女方', '關係', '跟誰一起來', '主賓手機'],
+      ps.map(p => [p.table ? label(p.table) : '未排', p.name, p.veg ? '素食套餐' : '', !p.idx && num(p.g.kids) ? num(p.g.kids) : '', p.g.side, p.g.relation, p.of || '', '\t' + p.g.phone]));
   });
 
   // ---------- 匯入座位表 ----------
@@ -1064,11 +1069,11 @@
     const cnt = no => {
       let n = 0, v = 0;
       p.seats.forEach((s, id) => { const ps = persons(guests.find(x => x.id === id)); s.forEach((t, i) => { if (t === no) { n++; if (ps[i].veg) v++; } }); });
-      return [n, v];
+      return [n, v, Array.from(p.seats).reduce((a, [id, s]) => { const g = guests.find(x => x.id === id); return a + (s[0] === no ? num(g.kids) : 0); }, 0)];
     };
     $('#imp-body').innerHTML = `
       <p class="hint" style="margin:0 0 8px">檔案裡 ${p.total} 位，對到 ${p.total - p.miss.length} 位。按「確定匯入」後，桌次會換成下面這 ${p.newTables.length} 桌，每個人照檔案排好。</p>
-      <div class="imp-tables">${p.newTables.map(t => { const [n, v] = cnt(t.no); return `<div><b>${esc(label(t.no))}</b>　${n}／${t.cap} 位${v ? ` <span class="tag veg">素食套餐 ${v}</span>` : ''}${n > t.cap ? ' <span class="warn">超過座位數</span>' : ''}</div>`; }).join('')}</div>
+      <div class="imp-tables">${p.newTables.map(t => { const [n, v, k] = cnt(t.no); return `<div><b>${esc(label(t.no))}</b>　${n}／${t.cap} 位${v ? ` <span class="tag veg">素食套餐 ${v}</span>` : ''}${k ? ` <span class="tag kid">兒童椅 ${k}</span>` : ''}${n > t.cap ? ' <span class="warn">超過座位數</span>' : ''}</div>`; }).join('')}</div>
       ${p.miss.length ? `<p class="err" style="margin:10px 0 4px">這 ${p.miss.length} 位在後台找不到，不會排進去（可能是名字或手機跟後台不一樣）：</p><p class="hint" style="margin:0">${p.miss.map(r => `第 ${r.line} 列 ${esc(r.name)}${r.of ? '（' + esc(r.of) + '的同行）' : ''}`).join('、')}</p>` : ''}
       ${p.left.length ? `<p class="err" style="margin:10px 0 4px">這 ${p.left.length} 位在後台有、但檔案裡沒有，匯入後會變成「尚未排桌」：</p><p class="hint" style="margin:0">${p.left.map(q => esc(q.name) + (q.of ? '（' + esc(q.of) + '的同行）' : '')).join('、')}</p>` : ''}
       ${!p.miss.length && !p.left.length ? '<p class="hint" style="margin:10px 0 0">全部的人都對上了 👍</p>' : ''}`;
