@@ -78,6 +78,29 @@
   .bar { height: 6px; background: var(--latte); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
   .bar i { display: block; height: 100%; background: var(--gold); }
   .tcard.over .bar i { background: var(--red); }
+  /* 場地圖：照飯店「場地配置圖 12T」的位置，數字都是佔整個宴會廳寬高的百分比 */
+  .plan-card { margin-bottom: 12px; }
+  .plan-card h3 { margin: 0 0 4px; font-size: 16px; }
+  .plan { position: relative; max-width: 520px; margin: 8px auto 0; aspect-ratio: 294 / 465; background: #fff; border: 2px solid var(--ink); border-radius: 6px; }
+  .plan .stage, .plan .aisle { position: absolute; display: grid; place-items: center; color: var(--muted); font-size: 13px; letter-spacing: .2em; }
+  .plan .stage { left: 20%; width: 59.6%; top: 1.2%; height: 12%; background: var(--latte); border-radius: 4px; color: var(--ink); font-weight: 600; }
+  .plan .aisle { background: repeating-linear-gradient(45deg, #efe6d8 0 6px, #e6dac7 6px 12px); }
+  .plan .aisle.v { left: 46.6%; width: 6.8%; top: 48%; height: 32.6%; writing-mode: vertical-rl; }
+  .plan .aisle.h { left: 46.6%; width: 53.4%; top: 76.8%; height: 3.8%; font-size: 11px; }
+  .plan .arrow { position: absolute; left: 50%; top: 44%; transform: translateX(-50%); width: 0; height: 0; border: 9px solid transparent; border-bottom: 12px solid #d9c9b0; border-top: 0; }
+  .plan .door { position: absolute; font-size: 11px; color: var(--muted); }
+  .ptable { position: absolute; width: 19%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: var(--paper);
+    border: 2px dashed var(--tea); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    line-height: 1.15; cursor: pointer; padding: 2px; font-size: clamp(9px, 2.3vw, 12.5px); }
+  .ptable b { font-size: 1.05em; }
+  .ptable small { color: var(--muted); font-size: .9em; }
+  .ptable .tag { font-size: .85em; padding: 0 5px; margin-top: 2px; }
+  .ptable.main { border-color: var(--red); border-style: solid; }
+  .ptable.full { background: #f6ecd9; }
+  .ptable.over { border: 2px solid var(--red); background: #fbe3e3; }
+  .ptable.drop { box-shadow: 0 0 0 4px var(--gold); background: #fffaf0; }
+  .tcard.flash { animation: flash 1.2s ease; }
+  @keyframes flash { 0%, 60% { box-shadow: 0 0 0 4px var(--gold); } }
   .seat-count { font-size: 13px; color: var(--muted); font-weight: 400; white-space: nowrap; }
   .tcard.over .seat-count { color: var(--red); font-weight: 600; }
   .person {
@@ -186,7 +209,15 @@
       <p class="legend"><span><i style="background:var(--blue)"></i>男方</span><span><i style="background:var(--pink)"></i>女方</span><span><i style="background:#6b4fa0"></i>共同朋友</span><span><span class="tag veg">素</span>吃素</span></p>
       <div class="seat-layout">
         <div class="card pool" id="pool" data-table=""></div>
-        <div class="tables" id="tables"></div>
+        <div>
+          <div class="card plan-card">
+            <h3>場地圖</h3>
+            <p class="hint" style="margin:0">照飯店的場地配置圖（12 桌）。可以直接把人拖到圓桌上；點圓桌會跳到下面那一桌的名單。</p>
+            <div class="plan" id="plan"></div>
+            <p class="hint" id="plan-miss" style="margin:8px 0 0"></p>
+          </div>
+          <div class="tables" id="tables"></div>
+        </div>
       </div>
     </section>
 
@@ -592,6 +623,29 @@
         ${inT.length ? inT.map(chip).join('') : '<div class="empty">把人拖到這裡</div>'}
       </div>`;
     }).join('');
+    renderPlan(ps);
+  }
+
+  // 飯店場地圖上每一桌的位置（桌號 → 圓心的 x%、y%）。桌名裡的數字就是飯店桌號，例如「同心01桌」= #1
+  const SPOTS = { main: [51.7, 24.7], 8: [18.4, 29], 1: [88, 25.8], 2: [73.8, 39.8], 9: [28.9, 44], 3: [82.3, 53.8],
+    10: [18.4, 58.5], 5: [73.8, 68.8], 11: [28.9, 75.3], 12: [18.4, 91.4], 7: [50, 91.4], 6: [79.6, 91.4] };
+  const spotOf = no => /主桌|main/i.test(no) ? 'main' : (String(no).match(/\d+/) || [''])[0].replace(/^0+/, '');
+  function renderPlan(ps) {
+    const taken = new Set(), miss = [];
+    const circles = tables.map(t => {
+      const k = spotOf(t.no), xy = SPOTS[k];
+      if (!xy || taken.has(k)) { miss.push(label(t.no)); return ''; }
+      taken.add(k);
+      const inT = ps.filter(p => p.table === t.no), cap = num(t.cap), veg = inT.filter(p => p.veg).length;
+      const name = k === 'main' ? t.no : t.no.replace(/0*\d+\s*桌?$/, '') || label(t.no);
+      return `<div class="ptable ${k === 'main' ? 'main' : ''} ${inT.length > cap ? 'over' : inT.length === cap ? 'full' : ''}" data-table="${esc(t.no)}"
+        style="left:${xy[0]}%;top:${xy[1]}%" title="${esc(label(t.no))}　${inT.length}／${cap} 位">
+        <b>${k === 'main' ? esc(name) : '#' + k}</b>${k === 'main' ? '' : `<small>${esc(name)}</small>`}<small>${inT.length}／${cap}</small>${veg ? `<span class="tag veg">素 ${veg}</span>` : ''}
+      </div>`;
+    }).join('');
+    $('#plan').innerHTML = '<div class="stage">舞　台</div><div class="arrow"></div><div class="aisle v">走道</div><div class="aisle h">走道</div>' +
+      '<div class="door" style="right:1%;top:81.5%">入口 →</div>' + circles;
+    $('#plan-miss').textContent = miss.length ? '這幾桌在飯店場地圖上找不到位置（桌名裡沒有對應的桌號）：' + miss.join('、') : '';
   }
 
   const seatPanel = document.querySelector('[data-panel="seat"]');
@@ -630,7 +684,11 @@
     const c = e.target.closest('[data-pid]');
     if (c) { selected = selected === c.dataset.pid ? null : c.dataset.pid; return renderSeat(); }
     const drop = e.target.closest('[data-table]');
-    if (drop && selected) { const s = selected; selected = null; moveTo(s, drop.dataset.table); }
+    if (drop && selected) { const s = selected; selected = null; return moveTo(s, drop.dataset.table); }
+    if (drop && drop.classList.contains('ptable')) {          // 點場地圖上的圓桌：跳到那一桌的名單
+      const card = Array.from(document.querySelectorAll('#tables [data-table]')).find(x => x.dataset.table === drop.dataset.table);
+      if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash'); }
+    }
   });
 
   // ---------- 桌次設定 ----------
