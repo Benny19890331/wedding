@@ -175,27 +175,6 @@
   gcal.searchParams.set('details', '午宴 11:00 開始，三樓宴會廳。捷運三多商圈站（R8）2 號出口步行約 6 分鐘；婚宴賓客享 4 小時免費停車。');
   document.getElementById('gcal').href = gcal.toString();
 
-  // ---------- 倒數計時 ----------
-  const start = new Date(CFG.START || '2026-11-06T11:00:00+08:00').getTime();
-  const cd = document.getElementById('countdown');
-  const cells = {};
-  cd.querySelectorAll('[data-k]').forEach(b => { cells[b.dataset.k] = b; });
-  function tick() {
-    let s = Math.max(0, Math.floor((start - Date.now()) / 1000));
-    const d = Math.floor(s / 86400); s -= d * 86400;
-    const h = Math.floor(s / 3600); s -= h * 3600;
-    const m = Math.floor(s / 60); s -= m * 60;
-    const vals = { d: String(d), h: String(h).padStart(2, '0'), m: String(m).padStart(2, '0'), s: String(s).padStart(2, '0') };
-    Object.keys(vals).forEach(k => {
-      if (cells[k].textContent === vals[k]) return;
-      cells[k].textContent = vals[k];
-      // 數字變動時跳一下
-      cells[k].classList.remove('tick'); void cells[k].offsetWidth; cells[k].classList.add('tick');
-    });
-  }
-  tick();
-  setInterval(tick, 1000);
-
   // ---------- 出席表單 ----------
   const form = document.getElementById('rsvp-form');
   const f = form.elements;
@@ -273,32 +252,9 @@
     attendBox.hidden = f.attend.value === 'no';      // 預設就顯示，只有選「無法出席」才收起來
     addrField.hidden = !f.paper.checked;
     document.getElementById('kids-field').hidden = f.seat.value !== 'yes';
-    gift.hidden = f.attend.value !== 'no';          // 選「無法出席」才出現紅包轉帳區
   }
   form.addEventListener('change', () => { syncVisibility(); syncCounts(); });
   form.addEventListener('input', e => e.target.removeAttribute('aria-invalid'));   // 開始修改就拿掉紅框
-
-  // ---------- 紅包轉帳區 ----------
-  const gift = document.getElementById('gift');
-  const giftBox = document.getElementById('gift-box');
-  const giftToggle = document.getElementById('gift-toggle');
-  giftToggle.addEventListener('click', () => {
-    giftBox.hidden = !giftBox.hidden;
-    giftToggle.setAttribute('aria-expanded', String(!giftBox.hidden));
-    giftToggle.textContent = giftBox.hidden ? '顯示轉帳 QR Code' : '收起 QR Code';
-  });
-  document.getElementById('gift-copy').addEventListener('click', async e => {
-    const no = document.getElementById('gift-no');
-    try {
-      await navigator.clipboard.writeText(no.textContent.trim());
-      e.target.textContent = '已複製';
-    } catch (err) {                              // 有些瀏覽器不給複製，改成把帳號選起來讓人手動複製
-      const r = document.createRange(); r.selectNodeContents(no);
-      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
-      e.target.textContent = '已選取帳號，請長按複製';
-    }
-    setTimeout(() => { e.target.textContent = '複製帳號'; }, 2500);
-  });
 
   const normPhone = p => {
     let d = String(p || '').replace(/\D/g, '');
@@ -394,8 +350,6 @@
       document.getElementById('thanks-body').textContent = (out.updated ? '已更新您先前的回覆。' : '我們收到您的回覆了。') +
         (d.attend === 'yes' ? `共 ${d.count} 位（葷 ${d.meat}・素 ${d.veg}${d.kids ? `・嬰兒／兒童座椅 ${d.kids}` : ''}）。` : '') +
         (CFG.PREVIEW ? '（這是預覽版，資料沒有真的送出）' : '');
-      // 無法出席的人送出後，紅包轉帳區移到感謝卡片裡繼續顯示
-      if (d.attend === 'no') thanks.insertBefore(gift, document.getElementById('edit-again'));
       form.hidden = true;
       thanks.hidden = false;
       thanks.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -409,7 +363,6 @@
   });
 
   document.getElementById('edit-again').addEventListener('click', () => {
-    form.insertBefore(gift, form.querySelector('.check'));     // 紅包轉帳區放回表單原位
     thanks.hidden = true;
     form.hidden = false;
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });

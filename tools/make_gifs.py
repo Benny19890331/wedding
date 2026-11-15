@@ -190,7 +190,7 @@ def gif_calendar():
             if i - flips * per > 12:
                 k = seg(i - flips * per, 12, 22)
                 d.polygon(heart_poly(ox + w - 40, oy + 170, 60 * ease_out(k), -0.3), fill=RED)
-                text_center(d, (S / 2, 740), '記得來喝喜酒喔！', font(42), INK)
+                text_center(d, (S / 2, 740), '謝謝你來喝喜酒！', font(42), INK)
         # 日曆環
         for rx in (ox + 110, ox + w - 110):
             d.rounded_rectangle((rx - 12, oy - 34, rx + 12, oy + 30), 12, fill=GOLD)

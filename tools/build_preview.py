@@ -44,7 +44,6 @@ css += '\n.map-note { text-align: center; color: var(--muted); font-size: 13px; 
 put('css/style.css', css)
 put('js/main.js')
 put('config.js', "// 預覽版設定：表單不會真的送出\nwindow.WEDDING_CONFIG = { API_URL: '', PREVIEW: true, START: '2026-11-06T11:00:00+08:00' };\n")
-put('assets/gift-qr.png')
 for d in ('assets/video', 'assets/audio', 'assets/fonts', 'assets/gif'):
     for f in sorted(os.listdir(os.path.join(ROOT, d))):
         if not f.endswith('.txt'):

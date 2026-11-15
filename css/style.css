@@ -375,20 +375,6 @@ html.locked, html.locked body { overflow: hidden; }
 .car { background: var(--gold); }
 
 /* 倒數 */
-.countdown {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-top: 8px;
-}
-.countdown div {
-  background: var(--paper);
-  border-radius: 14px;
-  padding: 12px 4px 8px;
-  box-shadow: 0 0 0 1px rgba(201, 164, 92, .4);
-}
-.countdown b { display: block; font-size: 30px; color: var(--red); line-height: 1.2; font-variant-numeric: tabular-nums; }
-.countdown small { color: var(--tea); font-size: 12px; letter-spacing: .2em; }
 
 /* ---------------- 表單 ---------------- */
 .form-note { font-size: 14px; margin: 4px 0 18px; }
@@ -591,7 +577,6 @@ textarea { resize: vertical; }
 .reveal.shown > .frame::after { animation: shine 1.3s ease 1s both; }
 
 /* 倒數數字變動時跳一下 */
-.countdown b.tick { animation: tick .45s ease; }
 
 @keyframes env-float { 0%, 100% { transform: translateY(0) rotate(-.6deg); } 50% { transform: translateY(-8px) rotate(.6deg); } }
 @keyframes seal-pulse { from { transform: scale(1); opacity: .9; } to { transform: scale(1.7); opacity: 0; } }
@@ -743,7 +728,7 @@ textarea { resize: vertical; }
   .frame { max-width: 380px; }
   .env-wrap { width: 400px; }
   .cover-to { font-size: 26px; }
-  .countdown, .way { max-width: 440px; margin-inline: auto; }
+  .way { max-width: 440px; margin-inline: auto; }
 }
 
 @media (min-width: 760px) {
@@ -819,17 +804,7 @@ textarea { resize: vertical; }
 }
 
 /* --- 無法出席時的紅包轉帳區 --- */
-.gift { display: grid; gap: 12px; padding: 16px; border-radius: 14px; background: rgba(201, 164, 92, .1); box-shadow: inset 0 0 0 1px rgba(201, 164, 92, .4); text-align: center; }
-.gift-lead { margin: 0; font-size: 14.5px; line-height: 1.8; }
-.gift-box { display: grid; gap: 10px; justify-items: center; }
-.gift-box img { width: min(100%, 260px); border-radius: 12px; background: #fff; box-shadow: 0 4px 14px rgba(92, 70, 52, .14); }
-.gift-acct { margin: 0; font-size: 14px; line-height: 1.7; }
-.gift-acct b { font-family: ui-monospace, Consolas, monospace; font-size: 18px; letter-spacing: .08em; color: var(--red); user-select: all; }
-.gift-copy { padding: 8px 18px; font-size: 14px; }
-.gift-tip { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
-.thanks .gift { margin: 0 0 18px; }
 
-.gift-memo { margin: 2px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--paper); font-size: 14px; line-height: 1.8; }
 
 /* --- 同行親友：一人一列 --- */
 .comp-list { display: grid; gap: 10px; }
@@ -841,3 +816,6 @@ textarea { resize: vertical; }
 .comp-del:hover { color: var(--red); }
 .comp-add { width: 100%; padding: 10px; font-size: 14.5px; margin-top: 2px; }
 .comp-list:not(:empty) + .comp-add { margin-top: 10px; }
+
+/* 婚禮後：感謝蒞臨 */
+.thanks-note { margin: 14px 0 20px; line-height: 2; font-size: 16px; }
