@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>蕭苰栯 ♥ 洪韻雯｜婚宴邀請</title>
-<meta name="description" content="2026.11.06（五）午宴・高雄日航酒店。我們要結婚了，誠摯邀請您來見證我們的幸福。">
+<meta name="description" content="2026.11.06（五）高雄日航酒店。謝謝每一位來見證我們幸福的你。">
 <meta name="theme-color" content="#F3EBE0">
 <!-- LINE / Facebook 分享預覽 -->
 <meta property="og:type" content="website">
-<meta property="og:title" content="蕭苰栯 ♥ 洪韻雯 要結婚了！">
-<meta property="og:description" content="2026.11.06（五）午宴・高雄日航酒店｜點開來看喜帖並回覆出席">
+<meta property="og:title" content="蕭苰栯 ♥ 洪韻雯 結婚了！">
+<meta property="og:description" content="2026.11.06 高雄日航酒店｜謝謝你的祝福，婚禮已圓滿結束">
 <meta property="og:image" content="https://benny19890331.github.io/wedding/assets/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -193,9 +193,9 @@
     <a class="btn btn-ghost" href="photos.html">上傳那天的照片給我們</a>
   </section>
 
-  <!-- ============ 出席回覆 ============ -->
+  <!-- ============ 出席回覆（婚禮後已關閉） ============ -->
   <section class="section reveal" id="rsvp">
-    <h2 class="section-title center"><small>R.S.V.P.</small>出席回覆</h2>
+    <h2 class="section-title center"><small>THE END</small>圓滿結束</h2>
     <svg class="deco cheers" viewBox="0 0 300 270" role="img" aria-label="兩個香檳杯輕輕碰杯">
       <!-- 兩個杯子各自以杯底為支點往中間傾斜，杯口剛好相碰、不會交疊 -->
       <g transform="translate(105 255)"><g class="tilt">
@@ -219,86 +219,13 @@
         <path class="clink-star" d="M0 -7l2.4 4.6 4.6 2.4-4.6 2.4-2.4 4.6-2.4-4.6-4.6-2.4 4.6-2.4z"/>
       </g>
     </svg>
-    <p class="center muted form-note">為了幫您安排座位，麻煩填寫以下資料。<br>填錯了沒關係，用同一支手機號碼再送出一次就會更新。</p>
-
-    <form class="card form" id="rsvp-form" novalidate>
-      <label class="field">
-        <span>姓名 <i>*</i></span>
-        <input name="name" autocomplete="name" maxlength="30" required placeholder="例：王小明">
-      </label>
-      <label class="field">
-        <span>手機號碼 <i>*</i></span>
-        <input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="15" required placeholder="09xx-xxx-xxx">
-      </label>
-
-      <fieldset class="field">
-        <legend>您是</legend>
-        <div class="chips">
-          <label><input type="radio" name="side" value="男方親友"><span>男方親友</span></label>
-          <label><input type="radio" name="side" value="女方親友"><span>女方親友</span></label>
-          <label><input type="radio" name="side" value="共同朋友"><span>共同朋友</span></label>
-        </div>
-      </fieldset>
-
-      <fieldset class="field">
-        <legend>是否出席 <i>*</i></legend>
-        <div class="choice">
-          <label><input type="radio" name="attend" value="yes" required><span><b>歡喜赴宴</b><small>我會到場！</small></span></label>
-          <label><input type="radio" name="attend" value="no"><span><b>無法出席</b><small>祝福滿滿</small></span></label>
-        </div>
-      </fieldset>
-
-      <div id="attend-fields">
-        <label class="check">
-          <input type="checkbox" name="selfveg" id="selfveg">
-          <span>我吃素</span>
-        </label>
-        <fieldset class="field">
-          <legend>同行親友</legend>
-          <div class="comp-list" id="comp-list"></div>
-          <button class="btn btn-ghost comp-add" type="button" id="comp-add">＋ 新增一位同行親友</button>
-        </fieldset>
-        <fieldset class="field">
-          <legend>嬰兒／兒童座椅</legend>
-          <div class="chips">
-            <label><input type="radio" name="seat" value="no" checked><span>不需要</span></label>
-            <label><input type="radio" name="seat" value="yes"><span>需要</span></label>
-          </div>
-        </fieldset>
-        <label class="field" id="kids-field" hidden>
-          <span>座椅數量</span>
-          <select name="kids"></select>
-        </label>
-        <p class="calc" id="meal-calc"></p>
-      </div>
-
-      <label class="check">
-        <input type="checkbox" name="paper">
-        <span>我想收到紙本喜帖</span>
-      </label>
-      <label class="field" id="address-field" hidden>
-        <span>寄送地址 <i>*</i></span>
-        <input name="address" autocomplete="street-address" maxlength="120" placeholder="郵遞區號＋完整地址">
-      </label>
-
-      <label class="field">
-        <span>想對新人說的話</span>
-        <textarea name="message" rows="3" maxlength="300" placeholder="選填"></textarea>
-      </label>
-
-      <!-- 防機器人：真人看不到這個欄位 -->
-      <label class="hp" aria-hidden="true">網站<input name="website" tabindex="-1" autocomplete="off"></label>
-
-      <p class="form-error" id="form-error" role="alert" hidden></p>
-      <button class="btn btn-big" type="submit" id="submit-btn">送出回覆</button>
-    </form>
-
-    <div class="card thanks" id="thanks" hidden>
+    <!-- 婚禮結束後關閉出席回覆（原本的表單在 git 紀錄裡） -->
+    <div class="card thanks">
       <div class="thanks-stamp" aria-hidden="true">囍</div>
       <p class="mission">★ MISSION COMPLETE ★</p>
-      <h3 id="thanks-title">收到您的回覆了！</h3>
-      <p id="thanks-body"></p>
-      <button class="btn btn-ghost" type="button" id="edit-again">修改回覆</button>
+      <h3>婚禮已圓滿結束</h3>
+      <p>謝謝大家的回覆與祝福，<br>出席回覆已經關閉。<br>如果那天有拍到照片，<br>歡迎分享給我們 ♥</p>
+      <a class="btn btn-ghost" href="photos.html">上傳婚禮照片</a>
     </div>
   </section>
 
@@ -310,6 +237,6 @@
 </main>
 
 <script src="config.js?v=10192201"></script>
-<script src="js/main.js?v=11151200"></script>
+<script src="js/main.js?v=11151500"></script>
 </body>
 </html>
