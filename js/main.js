@@ -159,20 +159,4 @@
   }, { threshold: 0.15 });
   document.querySelectorAll('.reveal').forEach(el => io ? io.observe(el) : el.classList.add('shown'));
 
-  // ---------- 交通分頁 ----------
-  const wayTabs = Array.from(document.querySelectorAll('.way-tabs button'));
-  wayTabs.forEach(tab => tab.addEventListener('click', () => {
-    wayTabs.forEach(t => t.setAttribute('aria-selected', String(t === tab)));
-    document.querySelectorAll('.way-panel').forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.way; });
-  }));
-
-  // ---------- Google 日曆連結 ----------
-  const gcal = new URL('https://calendar.google.com/calendar/render');
-  gcal.searchParams.set('action', 'TEMPLATE');
-  gcal.searchParams.set('text', '蕭苰栯 ♥ 洪韻雯 婚宴');
-  gcal.searchParams.set('dates', '20261106T030000Z/20261106T060000Z');
-  gcal.searchParams.set('location', '高雄日航酒店 三樓宴會廳，高雄市前鎮區林森四路268號');
-  gcal.searchParams.set('details', '午宴 11:00 開始，三樓宴會廳。捷運三多商圈站（R8）2 號出口步行約 6 分鐘；婚宴賓客享 4 小時免費停車。');
-  document.getElementById('gcal').href = gcal.toString();
-
 })();

@@ -786,12 +786,7 @@ textarea { resize: vertical; }
   .poem + .frame, .poem + .blend, .frame + .poem, .blend + .poem { margin-top: 0; }
   #moments > p:nth-of-type(2) { margin-top: 26px; }
 
-  /* 婚宴資訊：左邊資訊卡、右邊地圖 */
-  #info { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 28px; align-items: stretch; }
-  #info > .section-title { grid-column: 1 / -1; }
-  #info > .map, #info > .map-note { margin-top: 0; aspect-ratio: auto; min-height: 340px; }
-
-  /* 出席回覆：左邊說明、右邊表單 */
+  /* 圓滿結束：左邊標題和乾杯、右邊感謝卡 */
   #rsvp { grid-template-rows: 1fr auto auto auto 1fr; }
   #rsvp > .section-title { grid-area: 2 / 1; }
   #rsvp > .cheers { grid-area: 3 / 1; }
